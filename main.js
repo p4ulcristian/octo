@@ -37,7 +37,7 @@ function createWindow() {
     height: contentBounds.height - 170
   });
   
-  browserView.webContents.loadURL('https://www.google.com');
+  browserView.webContents.loadURL('https://localhost/customize');
 
   mainWindow.on('resize', () => {
     if (browserView) {
