@@ -14,61 +14,81 @@
             <p class="subtitle">A cross-platform desktop application framework</p>
         </header>
 
+        <div class="tab-navigation">
+            <button class="tab-button active" data-tab="app">Electron App</button>
+            <button class="tab-button" data-tab="browser">Google Chrome</button>
+        </div>
+
         <main>
-            <section class="info-section">
-                <h2>System Information</h2>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="label">Node.js:</span>
-                        <span id="node-version">Loading...</span>
+            <div id="app-tab" class="tab-content active">
+                <section class="info-section">
+                    <h2>System Information</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">Node.js:</span>
+                            <span id="node-version">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Chromium:</span>
+                            <span id="chrome-version">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Electron:</span>
+                            <span id="electron-version">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">App Version:</span>
+                            <span id="app-version">Loading...</span>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="label">Chromium:</span>
-                        <span id="chrome-version">Loading...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="label">Electron:</span>
-                        <span id="electron-version">Loading...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="label">App Version:</span>
-                        <span id="app-version">Loading...</span>
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            <section class="demo-section">
-                <h2>Interactive Demo</h2>
-                
-                <div class="demo-controls">
-                    <div class="input-group">
-                        <label for="message-input">Enter a message:</label>
-                        <input type="text" id="message-input" placeholder="Type something...">
-                    </div>
+                <section class="demo-section">
+                    <h2>Interactive Demo</h2>
                     
-                    <div class="button-group">
-                        <button id="show-message-btn" class="btn btn-primary">Show Message Dialog</button>
-                        <button id="clear-btn" class="btn btn-secondary">Clear</button>
+                    <div class="demo-controls">
+                        <div class="input-group">
+                            <label for="message-input">Enter a message:</label>
+                            <input type="text" id="message-input" placeholder="Type something...">
+                        </div>
+                        
+                        <div class="button-group">
+                            <button id="show-message-btn" class="btn btn-primary">Show Message Dialog</button>
+                            <button id="clear-btn" class="btn btn-secondary">Clear</button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="output-section">
-                    <h3>Output Log:</h3>
-                    <div id="output-log" class="output-log"></div>
-                </div>
-            </section>
+                    <div class="output-section">
+                        <h3>Output Log:</h3>
+                        <div id="output-log" class="output-log"></div>
+                    </div>
+                </section>
 
-            <section class="features-section">
-                <h2>Features</h2>
-                <ul class="features-list">
-                    <li>Cross-platform desktop applications</li>
-                    <li>Native menus and dialogs</li>
-                    <li>IPC communication between main and renderer</li>
-                    <li>Secure context isolation</li>
-                    <li>Access to Node.js APIs (in main process)</li>
-                    <li>Modern web technologies (HTML, CSS, JavaScript)</li>
-                </ul>
-            </section>
+                <section class="features-section">
+                    <h2>Features</h2>
+                    <ul class="features-list">
+                        <li>Cross-platform desktop applications</li>
+                        <li>Native menus and dialogs</li>
+                        <li>IPC communication between main and renderer</li>
+                        <li>Secure context isolation</li>
+                        <li>Access to Node.js APIs (in main process)</li>
+                        <li>Modern web technologies (HTML, CSS, JavaScript)</li>
+                    </ul>
+                </section>
+            </div>
+
+            <div id="browser-tab" class="tab-content">
+                <div class="browser-controls">
+                    <input type="text" id="url-bar" value="https://www.google.com" placeholder="Enter URL...">
+                    <button id="go-btn" class="btn btn-primary">Go</button>
+                    <button id="back-btn" class="btn btn-secondary">← Back</button>
+                    <button id="forward-btn" class="btn btn-secondary">Forward →</button>
+                    <button id="refresh-btn" class="btn btn-secondary">Refresh</button>
+                </div>
+                <div class="browser-placeholder">
+                    <p>Browser content is displayed here</p>
+                </div>
+            </div>
         </main>
 
         <footer>

@@ -10,6 +10,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateTime();
     setInterval(updateTime, 1000);
 
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.getAttribute('data-tab');
+            
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            button.classList.add('active');
+            
+            if (targetTab === 'app') {
+                document.getElementById('app-tab').classList.add('active');
+                window.electronAPI.switchTab('app');
+            } else if (targetTab === 'browser') {
+                document.getElementById('browser-tab').classList.add('active');
+                window.electronAPI.switchTab('browser');
+            }
+        });
+    });
+
+    const urlBar = document.getElementById('url-bar');
+    const goBtn = document.getElementById('go-btn');
+    const backBtn = document.getElementById('back-btn');
+    const forwardBtn = document.getElementById('forward-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
+
+    goBtn.addEventListener('click', () => {
+        const url = urlBar.value.trim();
+        window.electronAPI.navigateBrowser(url);
+    });
+
+    backBtn.addEventListener('click', () => {
+        window.electronAPI.browserBack();
+    });
+
+    forwardBtn.addEventListener('click', () => {
+        window.electronAPI.browserForward();
+    });
+
+    refreshBtn.addEventListener('click', () => {
+        window.electronAPI.browserRefresh();
+    });
+
+    urlBar.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            goBtn.click();
+        }
+    });
+
+    window.electronAPI.onBrowserNavigated((url) => {
+        urlBar.value = url;
+    });
+
     const messageInput = document.getElementById('message-input');
     const showMessageBtn = document.getElementById('show-message-btn');
     const clearBtn = document.getElementById('clear-btn');

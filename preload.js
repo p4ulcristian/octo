@@ -11,5 +11,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     node: process.versions.node,
     chrome: process.versions.chrome,
     electron: process.versions.electron
-  })
+  }),
+  switchTab: (tabName) => ipcRenderer.send('switch-tab', tabName),
+  navigateBrowser: (url) => ipcRenderer.send('navigate-browser', url),
+  browserBack: () => ipcRenderer.send('browser-back'),
+  browserForward: () => ipcRenderer.send('browser-forward'),
+  browserRefresh: () => ipcRenderer.send('browser-refresh'),
+  onBrowserNavigated: (callback) => {
+    ipcRenderer.on('browser-navigated', (event, url) => callback(url));
+  }
 });

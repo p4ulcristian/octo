@@ -1,12 +1,13 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, BrowserView, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 
 let mainWindow;
+let browserView;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    width: 1200,
+    height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -16,6 +17,75 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
+
+  browserView = new BrowserView({
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  mainWindow.removeBrowserView(browserView);
+  browserView.webContents.loadURL('https://www.google.com');
+
+  mainWindow.on('resize', () => {
+    if (browserView) {
+      const contentBounds = mainWindow.getContentBounds();
+      const viewBounds = {
+        x: 0,
+        y: 150,
+        width: contentBounds.width,
+        height: contentBounds.height - 200
+      };
+      browserView.setBounds(viewBounds);
+    }
+  });
+
+  ipcMain.on('switch-tab', (event, tabName) => {
+    if (tabName === 'browser') {
+      mainWindow.setBrowserView(browserView);
+      const contentBounds = mainWindow.getContentBounds();
+      browserView.setBounds({ 
+        x: 0, 
+        y: 150,
+        width: contentBounds.width, 
+        height: contentBounds.height - 200
+      });
+    } else {
+      mainWindow.removeBrowserView(browserView);
+    }
+  });
+
+  ipcMain.on('navigate-browser', (event, url) => {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    browserView.webContents.loadURL(url);
+  });
+
+  ipcMain.on('browser-back', () => {
+    if (browserView.webContents.canGoBack()) {
+      browserView.webContents.goBack();
+    }
+  });
+
+  ipcMain.on('browser-forward', () => {
+    if (browserView.webContents.canGoForward()) {
+      browserView.webContents.goForward();
+    }
+  });
+
+  ipcMain.on('browser-refresh', () => {
+    browserView.webContents.reload();
+  });
+
+  browserView.webContents.on('did-navigate', (event, url) => {
+    mainWindow.webContents.send('browser-navigated', url);
+  });
+
+  browserView.webContents.on('did-navigate-in-page', (event, url) => {
+    mainWindow.webContents.send('browser-navigated', url);
+  });
 
   const menu = Menu.buildFromTemplate([
     {
@@ -102,6 +172,7 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    browserView = null;
   });
 }
 
