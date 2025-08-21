@@ -197,5 +197,80 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Update bounds on window resize
     window.addEventListener('resize', updateBrowserMountBounds);
 
+    // Initialize Monaco Editor
+    let monacoEditor = null;
+    
+    function initializeMonacoEditor() {
+        console.log('initializeMonacoEditor called');
+        const editorContainer = document.getElementById('monaco-editor');
+        console.log('Editor container:', editorContainer);
+        
+        if (typeof require !== 'undefined') {
+            require.config({ 
+                paths: { 
+                    'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs' 
+                }
+            });
+            
+            require(['vs/editor/editor.main'], function() {
+                console.log('Monaco module loaded');
+                if (editorContainer && !monacoEditor) {
+                    console.log('Creating Monaco editor...');
+                    monacoEditor = monaco.editor.create(editorContainer, {
+                        value: [
+                            'function hello() {',
+                            '\tconsole.log("Hello from Monaco Editor!");',
+                            '\treturn "Monaco Editor is working!";',
+                            '}',
+                            '',
+                            '// Click here to start coding',
+                            'hello();'
+                        ].join('\n'),
+                        language: 'javascript',
+                        theme: 'vs-dark',
+                        automaticLayout: true,
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        lineNumbers: 'on',
+                        roundedSelection: false,
+                        scrollBeyondLastLine: false,
+                        readOnly: false,
+                        wordWrap: 'on'
+                    });
+                    
+                    // Force resize after creation
+                    setTimeout(() => {
+                        if (monacoEditor) {
+                            monacoEditor.layout();
+                        }
+                    }, 200);
+                    console.log('Monaco editor created:', monacoEditor);
+                } else {
+                    console.log('Container not found or editor already exists');
+                }
+            });
+        } else {
+            console.log('require not available');
+        }
+    }
+
+    // Initialize Monaco when editor tab is first clicked
+    const editorTabBtn = document.querySelector('[data-tab="editor"]');
+    if (editorTabBtn) {
+        editorTabBtn.addEventListener('click', () => {
+            console.log('Editor tab clicked');
+            setTimeout(() => {
+                if (!monacoEditor) {
+                    console.log('Initializing Monaco Editor...');
+                    initializeMonacoEditor();
+                } else {
+                    console.log('Monaco Editor already initialized');
+                }
+            }, 100);
+        });
+    } else {
+        console.log('Editor tab button not found');
+    }
+
     console.log('Application initialized');
 });

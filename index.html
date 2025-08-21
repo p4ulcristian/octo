@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com">
     <title>Electron 3-Pane App</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/editor/editor.main.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/loader.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -25,6 +27,7 @@
                         <button class="tab-btn active" data-tab="files">Files</button>
                         <button class="tab-btn" data-tab="search">Search</button>
                         <button class="tab-btn" data-tab="git">Git</button>
+                        <button class="tab-btn" data-tab="editor">Editor</button>
                     </div>
                     <div class="panel-content">
                         <div id="files-tab" class="tab-pane active">
@@ -47,6 +50,9 @@
                                 <div>Branch: main</div>
                                 <div>Changes: 0</div>
                             </div>
+                        </div>
+                        <div id="editor-tab" class="tab-pane">
+                            <div id="monaco-editor" class="monaco-editor-container"></div>
                         </div>
                     </div>
                 </div>
