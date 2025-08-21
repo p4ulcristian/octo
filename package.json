@@ -1,0 +1,16 @@
+{
+  "name": "electron-example-app",
+  "version": "1.0.0",
+  "description": "A simple Electron example application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": ["electron", "example"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^32.0.0"
+  }
+}
