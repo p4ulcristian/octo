@@ -20,6 +20,7 @@
     "nodemon": "^3.1.10"
   },
   "dependencies": {
-    "split.js": "^1.6.5"
+    "split.js": "^1.6.5",
+    "splitpanes": "^4.0.4"
   }
 }
