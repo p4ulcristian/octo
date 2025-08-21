@@ -5,12 +5,18 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev"
+    "dev": "NODE_ENV=development electron .",
+    "dev-fast": "nodemon --watch main.js --watch preload.js --exec \"electron .\""
   },
-  "keywords": ["electron", "example"],
+  "keywords": [
+    "electron",
+    "example"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^32.0.0"
+    "electron": "^32.0.0",
+    "electron-reload": "^2.0.0-alpha.1",
+    "nodemon": "^3.1.10"
   }
 }

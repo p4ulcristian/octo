@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   browserBack: () => ipcRenderer.send('browser-back'),
   browserForward: () => ipcRenderer.send('browser-forward'),
   browserRefresh: () => ipcRenderer.send('browser-refresh'),
+  browserDevTools: () => ipcRenderer.send('browser-devtools'),
   onBrowserNavigated: (callback) => {
     ipcRenderer.on('browser-navigated', (event, url) => callback(url));
   }

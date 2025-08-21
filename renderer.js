@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const backBtn = document.getElementById('back-btn');
     const forwardBtn = document.getElementById('forward-btn');
     const refreshBtn = document.getElementById('refresh-btn');
+    const devToolsBtn = document.getElementById('devtools-btn');
 
     goBtn.addEventListener('click', () => {
         const url = urlBar.value.trim();
@@ -31,6 +32,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     refreshBtn.addEventListener('click', () => {
         window.electronAPI.browserRefresh();
+    });
+
+    devToolsBtn.addEventListener('click', () => {
+        window.electronAPI.browserDevTools();
     });
 
     urlBar.addEventListener('keypress', (e) => {

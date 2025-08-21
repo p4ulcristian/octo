@@ -1,6 +1,13 @@
 const { app, BrowserWindow, BrowserView, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 
+if (process.env.NODE_ENV === 'development') {
+  require('electron-reload')(__dirname, {
+    electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
+    hardResetMethod: 'exit'
+  });
+}
+
 let mainWindow;
 let browserView;
 
@@ -8,6 +15,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 800,
+    fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -21,9 +29,14 @@ function createWindow() {
   browserView = new BrowserView({
     webPreferences: {
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false,
+      allowRunningInsecureContent: true,
+      experimentalFeatures: true
     }
   });
+
+  browserView.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
   mainWindow.addBrowserView(browserView);
   
@@ -73,6 +86,14 @@ function createWindow() {
 
   ipcMain.on('browser-refresh', () => {
     browserView.webContents.reload();
+  });
+
+  ipcMain.on('browser-devtools', () => {
+    if (browserView.webContents.isDevToolsOpened()) {
+      browserView.webContents.closeDevTools();
+    } else {
+      browserView.webContents.openDevTools();
+    }
   });
 
   browserView.webContents.on('did-navigate', (event, url) => {
@@ -175,8 +196,12 @@ function createWindow() {
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
+  app.quit();
+});
+
+app.on('before-quit', () => {
+  if (mainWindow) {
+    mainWindow.removeAllListeners('closed');
   }
 });
 
