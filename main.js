@@ -15,7 +15,6 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 800,
-    fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -43,11 +42,12 @@ function createWindow() {
   const contentBounds = mainWindow.getContentBounds();
   const halfWidth = Math.floor(contentBounds.width / 2);
   
+  // Position BrowserView much smaller and lower
   browserView.setBounds({ 
-    x: halfWidth + 5,
-    y: 120,
-    width: halfWidth - 15,
-    height: contentBounds.height - 170
+    x: halfWidth + 30,
+    y: 280,  // Start much lower
+    width: halfWidth - 60,
+    height: contentBounds.height - 380
   });
   
   browserView.webContents.loadURL('https://localhost/customize');
@@ -57,10 +57,10 @@ function createWindow() {
       const contentBounds = mainWindow.getContentBounds();
       const halfWidth = Math.floor(contentBounds.width / 2);
       browserView.setBounds({
-        x: halfWidth + 5,
-        y: 120,
-        width: halfWidth - 15,
-        height: contentBounds.height - 170
+        x: halfWidth + 30,
+        y: 280,  // Keep consistent position below controls
+        width: halfWidth - 60,
+        height: contentBounds.height - 380
       });
     }
   });
