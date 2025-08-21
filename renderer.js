@@ -1,42 +1,14 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Wait for Split.js to load
-    if (typeof Split === 'undefined') {
-        console.error('Split.js not loaded - will work without resizable panels');
-    } else {
-        console.log('Initializing multiple split panes...');
+    // Initialize Split.js for the 3-pane layout
+    if (typeof Split !== 'undefined') {
+        console.log('Initializing split panes...');
         
         try {
-            // Horizontal split for top section (3 columns)
-            const topSplit = Split(['#left-panel', '#middle-panel', '#right-panel'], {
-                sizes: [25, 50, 25],
-                minSize: [200, 300, 200],
-                gutterSize: 6,
-                cursor: 'col-resize',
-                gutter: (index, direction) => {
-                    const gutter = document.createElement('div');
-                    gutter.className = `gutter gutter-${direction}`;
-                    return gutter;
-                }
-            });
-            
-            // Horizontal split for bottom section (3 columns)
-            const bottomSplit = Split(['#terminal-panel', '#console-panel', '#tools-panel'], {
-                sizes: [33, 34, 33],
-                minSize: [150, 150, 150],
-                gutterSize: 6,
-                cursor: 'col-resize',
-                gutter: (index, direction) => {
-                    const gutter = document.createElement('div');
-                    gutter.className = `gutter gutter-${direction}`;
-                    return gutter;
-                }
-            });
-            
-            // Vertical split between top and bottom sections
-            const verticalSplit = Split(['#top-section', '#bottom-section'], {
-                sizes: [70, 30],
-                minSize: [200, 100],
-                gutterSize: 6,
+            // Vertical split for left container (Explorer and Terminal)
+            const leftSplit = Split(['#top-left-panel', '#bottom-left-panel'], {
+                sizes: [50, 50],
+                minSize: [100, 100],
+                gutterSize: 5,
                 direction: 'vertical',
                 cursor: 'row-resize',
                 gutter: (index, direction) => {
@@ -46,21 +18,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
             
-            console.log('All split panes initialized successfully');
+            // Horizontal split between left container and right panel (Browser)
+            const mainSplit = Split(['#left-container', '#right-panel'], {
+                sizes: [50, 50],
+                minSize: [300, 400],
+                gutterSize: 5,
+                cursor: 'col-resize',
+                gutter: (index, direction) => {
+                    const gutter = document.createElement('div');
+                    gutter.className = `gutter gutter-${direction}`;
+                    return gutter;
+                },
+                onDragEnd: (sizes) => {
+                    // Notify main process about panel resize
+                    if (window.electronAPI && window.electronAPI.panelResized) {
+                        window.electronAPI.panelResized('main', sizes);
+                    }
+                    updateBrowserMountBounds();
+                }
+            });
+            
+            console.log('Split panes initialized successfully');
         } catch (error) {
             console.error('Error initializing split panes:', error);
         }
     }
-    const versions = window.electronAPI.getVersions();
-    document.getElementById('node-version').textContent = versions.node;
-    document.getElementById('chrome-version').textContent = versions.chrome;
-    document.getElementById('electron-version').textContent = versions.electron;
-    
-    const appVersion = await window.electronAPI.getAppVersion();
-    document.getElementById('app-version').textContent = appVersion;
-    
-    // Platform info removed as process is not available in renderer
-    
+
+    // Load system information
+    if (window.electronAPI) {
+        try {
+            const versions = window.electronAPI.getVersions();
+            const appVersion = await window.electronAPI.getAppVersion();
+            
+            // Update version displays if elements exist
+            const nodeEl = document.getElementById('node-version');
+            const chromeEl = document.getElementById('chrome-version');
+            const electronEl = document.getElementById('electron-version');
+            const appEl = document.getElementById('app-version');
+            
+            if (nodeEl) nodeEl.textContent = versions.node;
+            if (chromeEl) chromeEl.textContent = versions.chrome;
+            if (electronEl) electronEl.textContent = versions.electron;
+            if (appEl) appEl.textContent = appVersion;
+        } catch (error) {
+            console.error('Error loading system info:', error);
+        }
+    }
+
     // Handle tab switching
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabPanes = document.querySelectorAll('.tab-pane');
@@ -69,19 +73,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         button.addEventListener('click', () => {
             const targetTab = button.getAttribute('data-tab');
             
+            // Find parent tab group
+            const tabGroup = button.closest('.panel');
+            const groupButtons = tabGroup.querySelectorAll('.tab-btn');
+            const groupPanes = tabGroup.querySelectorAll('.tab-pane');
+            
             // Update button states
-            tabButtons.forEach(btn => btn.classList.remove('active'));
+            groupButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             
             // Update pane visibility
-            tabPanes.forEach(pane => pane.classList.remove('active'));
-            document.getElementById(`${targetTab}-tab`).classList.add('active');
+            groupPanes.forEach(pane => pane.classList.remove('active'));
+            const targetPane = tabGroup.querySelector(`#${targetTab}-tab`);
+            if (targetPane) targetPane.classList.add('active');
         });
     });
 
-    updateTime();
-    setInterval(updateTime, 1000);
-
+    // Browser controls
     const urlBar = document.getElementById('url-bar');
     const goBtn = document.getElementById('go-btn');
     const backBtn = document.getElementById('back-btn');
@@ -89,111 +97,105 @@ document.addEventListener('DOMContentLoaded', async () => {
     const refreshBtn = document.getElementById('refresh-btn');
     const devToolsBtn = document.getElementById('devtools-btn');
 
-    goBtn.addEventListener('click', () => {
-        const url = urlBar.value.trim();
-        window.electronAPI.navigateBrowser(url);
-    });
-
-    backBtn.addEventListener('click', () => {
-        window.electronAPI.browserBack();
-    });
-
-    forwardBtn.addEventListener('click', () => {
-        window.electronAPI.browserForward();
-    });
-
-    refreshBtn.addEventListener('click', () => {
-        window.electronAPI.browserRefresh();
-    });
-
-    devToolsBtn.addEventListener('click', () => {
-        window.electronAPI.browserDevTools();
-    });
-
-    urlBar.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            goBtn.click();
-        }
-    });
-
-    window.electronAPI.onBrowserNavigated((url) => {
-        urlBar.value = url;
-    });
-
-    const messageInput = document.getElementById('message-input');
-    const showMessageBtn = document.getElementById('show-message-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const outputLog = document.getElementById('output-log');
-
-    showMessageBtn.addEventListener('click', async () => {
-        const message = messageInput.value.trim();
-        if (!message) {
-            addLogEntry('Please enter a message first!', 'error');
-            return;
-        }
-
-        addLogEntry(`Showing dialog: "${message}"`, 'info');
-        
-        const result = await window.electronAPI.showMessage('Custom Message', message);
-        
-        if (result === 0) {
-            addLogEntry('User clicked OK', 'success');
-        } else {
-            addLogEntry('User clicked Cancel', 'warning');
-        }
-    });
-
-    clearBtn.addEventListener('click', () => {
-        messageInput.value = '';
-        outputLog.innerHTML = '';
-        addLogEntry('Cleared input and log', 'info');
-    });
-
-    messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            showMessageBtn.click();
-        }
-    });
-
-    window.electronAPI.onMenuAction((event, data) => {
-        if (event.channel === 'menu-new') {
-            addLogEntry('Menu: New file', 'info');
-            messageInput.value = '';
-            outputLog.innerHTML = '';
-        } else if (event.channel === 'menu-open') {
-            addLogEntry(`Menu: Open - ${data}`, 'info');
-        }
-    });
-
-    function addLogEntry(message, type = 'info') {
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        const timestamp = new Date().toLocaleTimeString();
-        entry.textContent = `[${timestamp}] ${message}`;
-        
-        switch(type) {
-            case 'error':
-                entry.style.borderLeftColor = '#dc3545';
-                break;
-            case 'success':
-                entry.style.borderLeftColor = '#28a745';
-                break;
-            case 'warning':
-                entry.style.borderLeftColor = '#ffc107';
-                break;
-            default:
-                entry.style.borderLeftColor = '#667eea';
-        }
-        
-        outputLog.appendChild(entry);
-        outputLog.scrollTop = outputLog.scrollHeight;
+    if (goBtn) {
+        goBtn.addEventListener('click', () => {
+            const url = urlBar.value.trim();
+            if (window.electronAPI && window.electronAPI.navigateBrowser) {
+                window.electronAPI.navigateBrowser(url);
+            }
+        });
     }
 
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            if (window.electronAPI && window.electronAPI.browserBack) {
+                window.electronAPI.browserBack();
+            }
+        });
+    }
+
+    if (forwardBtn) {
+        forwardBtn.addEventListener('click', () => {
+            if (window.electronAPI && window.electronAPI.browserForward) {
+                window.electronAPI.browserForward();
+            }
+        });
+    }
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            if (window.electronAPI && window.electronAPI.browserRefresh) {
+                window.electronAPI.browserRefresh();
+            }
+        });
+    }
+
+    if (devToolsBtn) {
+        devToolsBtn.addEventListener('click', () => {
+            if (window.electronAPI && window.electronAPI.browserDevTools) {
+                window.electronAPI.browserDevTools();
+            }
+        });
+    }
+
+    if (urlBar) {
+        urlBar.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && goBtn) {
+                goBtn.click();
+            }
+        });
+    }
+
+    // Listen for browser navigation
+    if (window.electronAPI && window.electronAPI.onBrowserNavigated) {
+        window.electronAPI.onBrowserNavigated((url) => {
+            if (urlBar) urlBar.value = url;
+        });
+    }
+
+    // Update time in footer
     function updateTime() {
         const now = new Date();
-        const timeString = now.toLocaleString();
-        document.getElementById('current-time').textContent = timeString;
+        const timeString = now.toLocaleTimeString();
+        const timeEl = document.getElementById('current-time');
+        if (timeEl) timeEl.textContent = timeString;
     }
 
-    addLogEntry('Application initialized', 'success');
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    // Terminal input handling
+    const terminalInput = document.querySelector('.terminal-input');
+    if (terminalInput) {
+        terminalInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const command = e.target.value;
+                console.log('Terminal command:', command);
+                // Here you would handle the terminal command
+                e.target.value = '';
+            }
+        });
+    }
+
+    // Function to update browser mount bounds
+    function updateBrowserMountBounds() {
+        const browserMount = document.getElementById('browser-mount');
+        if (browserMount && window.electronAPI && window.electronAPI.sendBrowserMountBounds) {
+            const rect = browserMount.getBoundingClientRect();
+            window.electronAPI.sendBrowserMountBounds({
+                x: rect.left,
+                y: rect.top,
+                width: rect.width,
+                height: rect.height
+            });
+        }
+    }
+
+    // Send initial browser mount bounds
+    setTimeout(updateBrowserMountBounds, 100);
+
+    // Update bounds on window resize
+    window.addEventListener('resize', updateBrowserMountBounds);
+
+    console.log('Application initialized');
 });

@@ -21,5 +21,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onBrowserNavigated: (callback) => {
     ipcRenderer.on('browser-navigated', (event, url) => callback(url));
   },
-  panelResized: (sizes) => ipcRenderer.send('panel-resized', sizes)
+  panelResized: (panelType, sizes) => ipcRenderer.send('panel-resized', panelType, sizes),
+  sendBrowserMountBounds: (bounds) => ipcRenderer.send('browser-mount-bounds', bounds)
 });

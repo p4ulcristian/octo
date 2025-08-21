@@ -10,6 +10,7 @@ if (process.env.NODE_ENV === 'development') {
 
 let mainWindow;
 let browserView;
+let browserMountBounds = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -37,33 +38,29 @@ function createWindow() {
 
   browserView.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-  // Temporarily disable BrowserView to see the divider
-  // mainWindow.addBrowserView(browserView);
+  mainWindow.addBrowserView(browserView);
   
   const contentBounds = mainWindow.getContentBounds();
-  const halfWidth = Math.floor(contentBounds.width / 2);
+  const totalWidth = contentBounds.width;
+  const totalHeight = contentBounds.height;
   
-  // Position BrowserView much smaller and lower
+  // Position BrowserView in the right panel (right 50% of the window)
+  // Account for header (~50px), panel title (~30px), and browser controls (~40px)
+  const rightPanelStart = Math.floor(totalWidth * 0.5);
+  const rightPanelWidth = Math.floor(totalWidth * 0.5);
+  
+  // Initial positioning - will be updated by browser-mount-bounds
   browserView.setBounds({ 
-    x: halfWidth + 30,
-    y: 280,  // Start much lower
-    width: halfWidth - 60,
-    height: contentBounds.height - 380
+    x: 700,
+    y: 120,
+    width: 600,
+    height: 500
   });
   
   browserView.webContents.loadURL('https://localhost/customize');
 
   mainWindow.on('resize', () => {
-    if (browserView) {
-      const contentBounds = mainWindow.getContentBounds();
-      const halfWidth = Math.floor(contentBounds.width / 2);
-      browserView.setBounds({
-        x: halfWidth + 30,
-        y: 280,  // Keep consistent position below controls
-        width: halfWidth - 60,
-        height: contentBounds.height - 380
-      });
-    }
+    // Browser position will be updated via browser-mount-bounds message from renderer
   });
 
   ipcMain.on('navigate-browser', (event, url) => {
@@ -105,19 +102,24 @@ function createWindow() {
     mainWindow.webContents.send('browser-navigated', url);
   });
 
-  ipcMain.on('panel-resized', (event, sizes) => {
-    // Recalculate BrowserView position based on new panel sizes
-    const contentBounds = mainWindow.getContentBounds();
-    const totalWidth = contentBounds.width;
-    const rightPanelWidth = Math.floor(totalWidth * (sizes[1] / 100));
-    const rightPanelStart = Math.floor(totalWidth * (sizes[0] / 100)) + 20;
-    
-    browserView.setBounds({
-      x: rightPanelStart + 30,
-      y: 280,
-      width: rightPanelWidth - 60,
-      height: contentBounds.height - 380
-    });
+  ipcMain.on('browser-mount-bounds', (event, bounds) => {
+    browserMountBounds = bounds;
+    updateBrowserViewPosition();
+  });
+
+  function updateBrowserViewPosition() {
+    if (browserView && browserMountBounds) {
+      browserView.setBounds({
+        x: Math.floor(browserMountBounds.x),
+        y: Math.floor(browserMountBounds.y),
+        width: Math.floor(browserMountBounds.width),
+        height: Math.floor(browserMountBounds.height)
+      });
+    }
+  }
+
+  ipcMain.on('panel-resized', (event, panelType, sizes) => {
+    // Browser position will be updated via browser-mount-bounds message
   });
 
   const menu = Menu.buildFromTemplate([

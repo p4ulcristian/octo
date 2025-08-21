@@ -4,149 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'">
-    <title>Electron Multi-Pane App</title>
+    <title>Electron 3-Pane App</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Multi-Pane Electron Application</h1>
-            <p class="subtitle">Resizable panels with tabs and browser</p>
+            <h1>Electron Application</h1>
+            <p class="subtitle">3-pane resizable layout</p>
         </header>
 
-        <main class="main-container">
-            <!-- Top/Bottom Split -->
-            <div id="top-section" class="top-section">
-                <!-- Left/Middle/Right Split -->
-                <div id="left-panel" class="panel">
-                    <h2 class="panel-title">Navigation</h2>
-                    <div class="tab-navigation-left">
-                        <button class="tab-btn active" data-tab="home">🏠 Home</button>
-                        <button class="tab-btn" data-tab="system">💻 System</button>
-                        <button class="tab-btn" data-tab="files">📁 Files</button>
-                        <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+        <main class="main-container" id="main-container">
+            <!-- Left Side Container -->
+            <div id="left-container" class="left-container">
+                <!-- Top Left Panel -->
+                <div id="top-left-panel" class="panel">
+                    <h2 class="panel-title">📁 Explorer</h2>
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" data-tab="files">Files</button>
+                        <button class="tab-btn" data-tab="search">Search</button>
+                        <button class="tab-btn" data-tab="git">Git</button>
                     </div>
-                    <div class="tab-contents">
-                        <div id="home-tab" class="tab-pane active">
-                            <h3>Welcome</h3>
-                            <p>Multi-pane application with resizable sections.</p>
-                            <div class="demo-controls">
-                                <input type="text" id="message-input" placeholder="Test message...">
-                                <button id="show-message-btn" class="btn btn-primary">Show Dialog</button>
-                            </div>
-                            <div id="output-log" class="output-log"></div>
-                        </div>
-                        <div id="system-tab" class="tab-pane">
-                            <h3>System Info</h3>
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <span class="label">Node:</span>
-                                    <span id="node-version">...</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="label">Chrome:</span>
-                                    <span id="chrome-version">...</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="label">Electron:</span>
-                                    <span id="electron-version">...</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="label">Version:</span>
-                                    <span id="app-version">...</span>
-                                </div>
+                    <div class="panel-content">
+                        <div id="files-tab" class="tab-pane active">
+                            <div class="file-tree">
+                                <div class="tree-item">📁 src/</div>
+                                <div class="tree-item indent">📄 main.js</div>
+                                <div class="tree-item indent">📄 renderer.js</div>
+                                <div class="tree-item indent">📄 style.css</div>
+                                <div class="tree-item">📁 node_modules/</div>
+                                <div class="tree-item">📄 package.json</div>
+                                <div class="tree-item">📄 index.html</div>
                             </div>
                         </div>
-                        <div id="files-tab" class="tab-pane">
-                            <h3>File Browser</h3>
-                            <div class="file-path">
-                                <input type="text" id="file-path" value="/" placeholder="/path">
-                                <button class="btn btn-primary">Browse</button>
-                            </div>
-                            <div class="file-list">Files will appear here</div>
+                        <div id="search-tab" class="tab-pane">
+                            <input type="text" placeholder="Search files..." class="search-input">
+                            <div class="search-results">Search results will appear here</div>
                         </div>
-                        <div id="settings-tab" class="tab-pane">
-                            <h3>Settings</h3>
-                            <label><input type="checkbox"> Dark Mode</label><br>
-                            <label><input type="checkbox"> Auto-reload</label><br>
-                            <label><input type="checkbox"> Show DevTools</label>
+                        <div id="git-tab" class="tab-pane">
+                            <div class="git-status">
+                                <div>Branch: main</div>
+                                <div>Changes: 0</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="middle-panel" class="panel">
-                    <h2 class="panel-title">Editor / Content</h2>
-                    <div class="editor-tabs">
-                        <button class="editor-tab active">Document 1</button>
-                        <button class="editor-tab">Document 2</button>
-                        <button class="editor-tab">+ New</button>
-                    </div>
-                    <div class="editor-content">
-                        <textarea class="code-editor" placeholder="// Write your code here...
-function hello() {
-    console.log('Hello, World!');
-}"></textarea>
-                    </div>
-                </div>
-
-                <div id="right-panel" class="panel">
-                    <h2 class="panel-title">Browser</h2>
-                    <div class="browser-controls">
-                        <button id="back-btn" class="btn-icon">←</button>
-                        <button id="forward-btn" class="btn-icon">→</button>
-                        <button id="refresh-btn" class="btn-icon">⟳</button>
-                        <input type="text" id="url-bar" value="https://localhost/customize">
-                        <button id="go-btn" class="btn btn-primary">Go</button>
-                        <button id="devtools-btn" class="btn btn-secondary">DevTools</button>
-                    </div>
-                    <div class="browser-container">
-                        <div class="browser-placeholder">Browser content here</div>
+                <!-- Bottom Left Panel -->
+                <div id="bottom-left-panel" class="panel">
+                    <h2 class="panel-title">💻 Terminal</h2>
+                    <div class="terminal-container">
+                        <div class="terminal-tabs">
+                            <button class="terminal-tab active">Terminal 1</button>
+                            <button class="terminal-tab">Terminal 2</button>
+                            <button class="terminal-tab">+ New</button>
+                        </div>
+                        <div class="terminal-content">
+                            <div class="terminal-line">$ npm run dev</div>
+                            <div class="terminal-line success">✓ Electron app started</div>
+                            <div class="terminal-line">Listening on port 3000...</div>
+                            <div class="terminal-input-line">
+                                <span class="prompt">$</span>
+                                <input type="text" class="terminal-input" placeholder="Enter command...">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Bottom Section -->
-            <div id="bottom-section" class="bottom-section">
-                <!-- Terminal/Output Split -->
-                <div id="terminal-panel" class="panel">
-                    <h2 class="panel-title">Terminal</h2>
-                    <div class="terminal-container">
-                        <div class="terminal-input">
-                            <span class="prompt">$</span>
-                            <input type="text" id="command-input" placeholder="Enter command...">
-                            <button id="run-btn" class="btn btn-primary">Run</button>
-                        </div>
-                        <div id="terminal-output" class="terminal-output">
-                            <div>Welcome to the terminal</div>
-                            <div>Type a command and press Run or Enter</div>
-                        </div>
-                    </div>
+            <!-- Right Panel - Browser -->
+            <div id="right-panel" class="panel">
+                <h2 class="panel-title">🌐 Browser</h2>
+                <div class="browser-controls">
+                    <button id="back-btn" class="btn-icon" title="Back">←</button>
+                    <button id="forward-btn" class="btn-icon" title="Forward">→</button>
+                    <button id="refresh-btn" class="btn-icon" title="Refresh">⟳</button>
+                    <input type="text" id="url-bar" value="https://localhost/customize" placeholder="Enter URL...">
+                    <button id="go-btn" class="btn btn-primary">Go</button>
+                    <button id="devtools-btn" class="btn btn-secondary">DevTools</button>
                 </div>
-
-                <div id="console-panel" class="panel">
-                    <h2 class="panel-title">Console Output</h2>
-                    <div class="console-tabs">
-                        <button class="console-tab active">Problems</button>
-                        <button class="console-tab">Output</button>
-                        <button class="console-tab">Debug</button>
-                    </div>
-                    <div class="console-output">
-                        <div class="console-entry info">ℹ️ Application started</div>
-                        <div class="console-entry success">✅ All systems operational</div>
-                        <div class="console-entry warning">⚠️ Split.js loaded from CDN</div>
-                    </div>
-                </div>
-
-                <div id="tools-panel" class="panel">
-                    <h2 class="panel-title">Tools</h2>
-                    <div class="tools-grid">
-                        <button class="tool-btn">🔍 Search</button>
-                        <button class="tool-btn">📊 Stats</button>
-                        <button class="tool-btn">🎨 Theme</button>
-                        <button class="tool-btn">⚡ Performance</button>
-                        <button class="tool-btn">🔧 Debug</button>
-                        <button class="tool-btn">📦 Packages</button>
+                <div id="browser-mount" class="browser-mount">
+                    <!-- BrowserView will be positioned here -->
+                    <div class="browser-placeholder">
+                        <p>Loading browser...</p>
                     </div>
                 </div>
             </div>
@@ -157,7 +98,9 @@ function hello() {
             <span>|</span>
             <span id="current-time"></span>
             <span>|</span>
-            <span>Electron Multi-Pane App</span>
+            <span>Line 1, Column 1</span>
+            <span>|</span>
+            <span>UTF-8</span>
         </footer>
     </div>
 
