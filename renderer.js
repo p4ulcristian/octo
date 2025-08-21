@@ -10,28 +10,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateTime();
     setInterval(updateTime, 1000);
 
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const tabContents = document.querySelectorAll('.tab-content');
-
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            button.classList.add('active');
-            
-            if (targetTab === 'app') {
-                document.getElementById('app-tab').classList.add('active');
-                window.electronAPI.switchTab('app');
-            } else if (targetTab === 'browser') {
-                document.getElementById('browser-tab').classList.add('active');
-                window.electronAPI.switchTab('browser');
-            }
-        });
-    });
-
     const urlBar = document.getElementById('url-bar');
     const goBtn = document.getElementById('go-btn');
     const backBtn = document.getElementById('back-btn');
@@ -77,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        addLogEntry(`Showing dialog with message: "${message}"`, 'info');
+        addLogEntry(`Showing dialog: "${message}"`, 'info');
         
         const result = await window.electronAPI.showMessage('Custom Message', message);
         
@@ -102,11 +80,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.electronAPI.onMenuAction((event, data) => {
         if (event.channel === 'menu-new') {
-            addLogEntry('Menu action: New file', 'info');
+            addLogEntry('Menu: New file', 'info');
             messageInput.value = '';
             outputLog.innerHTML = '';
         } else if (event.channel === 'menu-open') {
-            addLogEntry(`Menu action: Open file - ${data}`, 'info');
+            addLogEntry(`Menu: Open - ${data}`, 'info');
         }
     });
 
@@ -140,5 +118,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('current-time').textContent = timeString;
     }
 
-    addLogEntry('Application initialized successfully', 'success');
+    addLogEntry('Application initialized', 'success');
 });

@@ -6,7 +6,7 @@ let browserView;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
+    width: 1400,
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -25,34 +25,30 @@ function createWindow() {
     }
   });
 
-  mainWindow.removeBrowserView(browserView);
+  mainWindow.addBrowserView(browserView);
+  
+  const contentBounds = mainWindow.getContentBounds();
+  const halfWidth = Math.floor(contentBounds.width / 2);
+  
+  browserView.setBounds({ 
+    x: halfWidth + 5,
+    y: 120,
+    width: halfWidth - 15,
+    height: contentBounds.height - 170
+  });
+  
   browserView.webContents.loadURL('https://www.google.com');
 
   mainWindow.on('resize', () => {
     if (browserView) {
       const contentBounds = mainWindow.getContentBounds();
-      const viewBounds = {
-        x: 0,
-        y: 150,
-        width: contentBounds.width,
-        height: contentBounds.height - 200
-      };
-      browserView.setBounds(viewBounds);
-    }
-  });
-
-  ipcMain.on('switch-tab', (event, tabName) => {
-    if (tabName === 'browser') {
-      mainWindow.setBrowserView(browserView);
-      const contentBounds = mainWindow.getContentBounds();
-      browserView.setBounds({ 
-        x: 0, 
-        y: 150,
-        width: contentBounds.width, 
-        height: contentBounds.height - 200
+      const halfWidth = Math.floor(contentBounds.width / 2);
+      browserView.setBounds({
+        x: halfWidth + 5,
+        y: 120,
+        width: halfWidth - 15,
+        height: contentBounds.height - 170
       });
-    } else {
-      mainWindow.removeBrowserView(browserView);
     }
   });
 
@@ -159,7 +155,7 @@ function createWindow() {
               type: 'info',
               title: 'About',
               message: 'Electron Example App',
-              detail: 'This is a simple Electron application demonstrating basic features.',
+              detail: 'This is a simple Electron application with side-by-side app and browser.',
               buttons: ['OK']
             });
           }
