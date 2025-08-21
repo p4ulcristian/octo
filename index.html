@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'">
     <title>Electron Example App</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -14,8 +15,8 @@
             <p class="subtitle">Side-by-side application and web browser</p>
         </header>
 
-        <main class="split-container">
-            <div class="left-panel">
+        <main class="split-container" id="split-container">
+            <div class="left-panel" id="left-panel">
                 <h2 class="panel-title">Electron Application</h2>
                 
                 <section class="info-section">
@@ -62,7 +63,7 @@
                 </section>
             </div>
 
-            <div class="right-panel">
+            <div class="right-panel" id="right-panel">
                 <h2 class="panel-title">Web Browser</h2>
                 <div class="browser-controls">
                     <button id="back-btn" class="btn-icon" title="Back">←</button>

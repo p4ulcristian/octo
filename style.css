@@ -39,7 +39,6 @@ header h1 {
 .split-container {
     flex: 1;
     display: flex;
-    gap: 10px;
     padding: 10px;
     overflow: hidden;
 }
@@ -55,14 +54,29 @@ header h1 {
 }
 
 .left-panel {
-    flex: 1;
-    max-width: 50%;
+    min-width: 300px;
 }
 
 .right-panel {
-    flex: 1;
-    max-width: 50%;
+    min-width: 300px;
     position: relative;
+}
+
+.gutter {
+    background-color: #667eea;
+    background-repeat: no-repeat;
+    background-position: 50%;
+    margin: 0 5px;
+    border-radius: 5px;
+}
+
+.gutter.gutter-horizontal {
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+    cursor: col-resize;
+}
+
+.gutter:hover {
+    background-color: #5a67d8;
 }
 
 .panel-title {

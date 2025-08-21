@@ -37,7 +37,8 @@ function createWindow() {
 
   browserView.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-  mainWindow.addBrowserView(browserView);
+  // Temporarily disable BrowserView to see the divider
+  // mainWindow.addBrowserView(browserView);
   
   const contentBounds = mainWindow.getContentBounds();
   const halfWidth = Math.floor(contentBounds.width / 2);
@@ -102,6 +103,21 @@ function createWindow() {
 
   browserView.webContents.on('did-navigate-in-page', (event, url) => {
     mainWindow.webContents.send('browser-navigated', url);
+  });
+
+  ipcMain.on('panel-resized', (event, sizes) => {
+    // Recalculate BrowserView position based on new panel sizes
+    const contentBounds = mainWindow.getContentBounds();
+    const totalWidth = contentBounds.width;
+    const rightPanelWidth = Math.floor(totalWidth * (sizes[1] / 100));
+    const rightPanelStart = Math.floor(totalWidth * (sizes[0] / 100)) + 20;
+    
+    browserView.setBounds({
+      x: rightPanelStart + 30,
+      y: 280,
+      width: rightPanelWidth - 60,
+      height: contentBounds.height - 380
+    });
   });
 
   const menu = Menu.buildFromTemplate([

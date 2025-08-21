@@ -1,4 +1,29 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for Split.js to load
+    if (typeof Split === 'undefined') {
+        console.error('Split.js not loaded');
+        return;
+    }
+    
+    console.log('Split.js loaded:', typeof Split);
+    
+    // Initialize Split.js for resizable panels
+    try {
+        const split = Split(['#left-panel', '#right-panel'], {
+            sizes: [50, 50],
+            minSize: [300, 300],
+            gutterSize: 10,
+            cursor: 'col-resize',
+            onDragEnd: (sizes) => {
+                console.log('Panel resized:', sizes);
+                // Notify main process about panel resize
+                window.electronAPI.panelResized(sizes);
+            }
+        });
+        console.log('Split.js initialized successfully');
+    } catch (error) {
+        console.error('Error initializing Split.js:', error);
+    }
     const versions = window.electronAPI.getVersions();
     document.getElementById('node-version').textContent = versions.node;
     document.getElementById('chrome-version').textContent = versions.chrome;
