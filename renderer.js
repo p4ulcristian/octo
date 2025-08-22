@@ -8,36 +8,50 @@ window.addEventListener('load', () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize Split.js for the 3-pane layout
-    if (typeof Split !== 'undefined') {
-        console.log('Initializing split panes...');
-        
-        try {
-            // Only horizontal split between left container and right panel (Browser)
-            const mainSplit = Split(['#left-container', '#right-panel'], {
-                sizes: [50, 50],
-                minSize: [300, 400],
-                gutterSize: 5,
-                cursor: 'col-resize',
-                gutter: (index, direction) => {
-                    const gutter = document.createElement('div');
-                    gutter.className = `gutter gutter-${direction}`;
-                    return gutter;
-                },
-                onDragEnd: (sizes) => {
-                    // Notify main process about panel resize
-                    if (window.electronAPI && window.electronAPI.panelResized) {
-                        window.electronAPI.panelResized('main', sizes);
-                    }
-                    updateBrowserMountBounds();
-                }
-            });
+    // Initialize Split.js with simple approach
+    let splitInstance = null;
+    
+    function initializeSplit() {
+        if (typeof Split !== 'undefined') {
+            console.log('Initializing Split.js...');
             
-            console.log('Split panes initialized successfully');
-        } catch (error) {
-            console.error('Error initializing split panes:', error);
+            // Destroy existing instance
+            if (splitInstance) {
+                splitInstance.destroy();
+                splitInstance = null;
+            }
+            
+            // Get visible panes
+            const activePanes = document.querySelectorAll('.pane.active');
+            console.log('Active panes:', activePanes.length);
+            
+            if (activePanes.length > 1) {
+                const paneIds = Array.from(activePanes).map(pane => `#${pane.id}`);
+                console.log('Split pane IDs:', paneIds);
+                
+                try {
+                    splitInstance = Split(paneIds, {
+                        sizes: Array(paneIds.length).fill(100 / paneIds.length),
+                        minSize: Array(paneIds.length).fill(0),
+                        gutterSize: 8,
+                        cursor: 'col-resize',
+                        onDragEnd: function(sizes) {
+                            console.log('Split drag ended, sizes:', sizes);
+                            setTimeout(updateBrowserMountBounds, 100);
+                        }
+                    });
+                    console.log('Split.js initialized successfully');
+                } catch (error) {
+                    console.error('Split.js error:', error);
+                }
+            } else {
+                console.log('Only one pane active, no split needed');
+            }
         }
     }
+    
+    // Initialize split on load
+    setTimeout(initializeSplit, 200);
 
     // Load system information
     if (window.electronAPI) {
@@ -60,52 +74,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Handle tab switching
-    function initializeTabSwitching() {
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        const tabPanes = document.querySelectorAll('.tab-pane');
+    // Handle top bar pane toggling
+    function initializePaneToggling() {
+        const topTabButtons = document.querySelectorAll('.top-tab-btn');
         
-        console.log('Found tab buttons:', tabButtons.length);
-        console.log('Found tab panes:', tabPanes.length);
+        console.log('Found top tab buttons:', topTabButtons.length);
         
-        tabButtons.forEach(button => {
+        topTabButtons.forEach(button => {
             button.addEventListener('click', () => {
-                const targetTab = button.getAttribute('data-tab');
-                console.log('Tab clicked:', targetTab);
+                const targetPaneName = button.getAttribute('data-pane');
+                const targetPane = document.querySelector(`#${targetPaneName}-pane`);
                 
-                // Find parent tab group
-                const tabGroup = button.closest('.panel');
-                const groupButtons = tabGroup.querySelectorAll('.tab-btn');
-                const groupPanes = tabGroup.querySelectorAll('.tab-pane');
-                
-                console.log('Group buttons:', groupButtons.length);
-                console.log('Group panes:', groupPanes.length);
-                
-                // Update button states
-                groupButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                
-                // Update pane visibility
-                groupPanes.forEach(pane => {
-                    pane.classList.remove('active');
-                    console.log('Removed active from:', pane.id);
-                });
-                
-                const targetPane = tabGroup.querySelector(`#${targetTab}-tab`);
-                console.log('Target pane:', targetPane);
+                console.log('Pane button clicked:', targetPaneName);
                 
                 if (targetPane) {
-                    targetPane.classList.add('active');
-                    console.log('Added active to:', targetPane.id);
+                    // Toggle the pane visibility
+                    const isActive = targetPane.classList.contains('active');
+                    
+                    if (isActive) {
+                        // Turn off pane
+                        targetPane.classList.remove('active');
+                        button.classList.remove('active');
+                        console.log('Turned off pane:', targetPaneName);
+                    } else {
+                        // Turn on pane
+                        targetPane.classList.add('active');
+                        button.classList.add('active');
+                        console.log('Turned on pane:', targetPaneName);
+                    }
+                    
+                    // Reinitialize split after layout change
+                    setTimeout(() => {
+                        initializeSplit();
+                        updateBrowserMountBounds();
+                    }, 100);
                 } else {
-                    console.log('Target pane not found for:', targetTab);
+                    console.log('Target pane not found for:', targetPaneName);
                 }
             });
         });
     }
     
-    // Initialize tab switching
-    initializeTabSwitching();
+    // Initialize pane toggling
+    initializePaneToggling();
 
     // File tree click handlers
     function initializeFileTree() {
@@ -117,10 +128,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 item.addEventListener('click', async () => {
                     const fileName = item.textContent.replace('📄 ', '').trim();
                     
-                    // Switch to editor tab
-                    const editorTab = document.querySelector('[data-tab="editor"]');
-                    if (editorTab) {
-                        editorTab.click();
+                    // Ensure editor pane is visible
+                    const editorPane = document.querySelector('#editor-pane');
+                    const editorButton = document.querySelector('.top-tab-btn[data-pane="editor"]');
+                    if (editorPane && !editorPane.classList.contains('active')) {
+                        editorButton.click();
                         
                         // Wait a bit for editor to initialize, then load file
                         setTimeout(async () => {
@@ -511,19 +523,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Initialize CodeMirror when editor tab is clicked
-    const editorTabBtn = document.querySelector('[data-tab="editor"]');
+    // Initialize CodeMirror when editor pane is shown
+    const editorTabBtn = document.querySelector('.top-tab-btn[data-pane="editor"]');
     if (editorTabBtn) {
         editorTabBtn.addEventListener('click', () => {
-            if (!codeMirrorEditor) {
-                initializeCodeMirror();
-                codeMirrorEditor = true; // Mark as initialized
-            }
+            setTimeout(() => {
+                if (!codeMirrorEditor) {
+                    initializeCodeMirror();
+                    codeMirrorEditor = true; // Mark as initialized
+                }
+            }, 100);
         });
     }
     
-    // Initialize terminal when terminal tab is clicked
-    const terminalTabBtn = document.querySelector('[data-tab="terminal"]');
+    // Initialize terminal when terminal pane is shown
+    const terminalTabBtn = document.querySelector('.top-tab-btn[data-pane="terminal"]');
     if (terminalTabBtn) {
         terminalTabBtn.addEventListener('click', () => {
             setTimeout(() => {
@@ -534,8 +548,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // Initialize Claude terminal when Claude tab is clicked
-    const claudeTabBtn = document.querySelector('[data-tab="claude"]');
+    // Initialize Claude terminal when Claude pane is shown
+    const claudeTabBtn = document.querySelector('.top-tab-btn[data-pane="claude"]');
     if (claudeTabBtn) {
         claudeTabBtn.addEventListener('click', () => {
             setTimeout(() => {

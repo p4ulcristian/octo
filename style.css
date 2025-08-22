@@ -18,6 +18,35 @@ body {
     flex-direction: column;
 }
 
+.top-bar {
+    background: #2d2d30;
+    border-bottom: 1px solid #3e3e42;
+    display: flex;
+    padding: 0;
+    height: 35px;
+}
+
+.top-tab-btn {
+    background: none;
+    border: none;
+    color: #cccccc;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    border-right: 1px solid #3e3e42;
+    transition: background-color 0.2s;
+}
+
+.top-tab-btn:hover {
+    background: #37373d;
+}
+
+.top-tab-btn.active {
+    background: #1e1e1e;
+    color: #ffffff;
+    border-bottom: 2px solid #0e639c;
+}
+
 header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -41,14 +70,45 @@ header h1 {
     overflow: hidden;
 }
 
-.left-container {
-    display: flex;
-    flex-direction: column;
-    width: 50%;
+.splitpanes {
+    width: 100%;
+    height: 100%;
 }
 
-#right-panel {
-    width: 50%;
+.splitpanes__pane {
+    display: flex;
+    flex-direction: column;
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    overflow: hidden;
+}
+
+.pane:not(.active) {
+    display: none !important;
+}
+
+/* Splitpanes splitter customization */
+.splitpanes--horizontal > .splitpanes__splitter {
+    background-color: #3e3e42;
+    border-left: 1px solid #2d2d30;
+    border-right: 1px solid #2d2d30;
+    cursor: col-resize;
+    width: 8px;
+}
+
+.splitpanes--horizontal > .splitpanes__splitter:hover {
+    background-color: #0e639c;
+}
+
+.splitpanes--horizontal > .splitpanes__splitter:before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .panel {
@@ -196,13 +256,12 @@ header h1 {
     overflow: hidden;
 }
 
-#editor-tab {
-    flex: 1;
+#editor-pane {
     flex-direction: column;
     padding: 0;
 }
 
-#editor-tab .file-tree {
+#editor-pane .file-tree {
     max-height: 200px;
     overflow-y: auto;
     border-bottom: 1px solid #333;

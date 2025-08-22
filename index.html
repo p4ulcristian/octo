@@ -10,57 +10,40 @@
 </head>
 <body>
     <div class="container">
+        <div class="top-bar">
+            <button class="top-tab-btn active" data-pane="editor">Editor</button>
+            <button class="top-tab-btn" data-pane="terminal">Terminal</button>
+            <button class="top-tab-btn" data-pane="claude">Claude</button>
+            <button class="top-tab-btn" data-pane="preview">Preview</button>
+        </div>
 
         <main class="main-container" id="main-container">
-            <!-- Left Side Container -->
-            <div id="left-container" class="left-container">
-                <!-- Main Left Panel -->
-                <div id="main-left-panel" class="panel">
-                    <h2 class="panel-title">📁 Explorer</h2>
-                    <div class="tab-navigation">
-                        <button class="tab-btn active" data-tab="editor">Editor</button>
-                        <button class="tab-btn" data-tab="search">Search</button>
-                        <button class="tab-btn" data-tab="git">Git</button>
-                        <button class="tab-btn" data-tab="terminal">Terminal</button>
-                        <button class="tab-btn" data-tab="claude">Claude</button>
-                    </div>
-                    <div class="panel-content">
-                        <div id="editor-tab" class="tab-pane active">
-                            <div class="file-tree">
-                                <div class="tree-item">📁 src/</div>
-                                <div class="tree-item indent">📄 main.js</div>
-                                <div class="tree-item indent">📄 renderer.js</div>
-                                <div class="tree-item indent">📄 style.css</div>
-                                <div class="tree-item">📁 node_modules/</div>
-                                <div class="tree-item">📄 package.json</div>
-                                <div class="tree-item">📄 index.html</div>
-                            </div>
-                            <div id="codemirror-editor"></div>
-                        </div>
-                        <div id="search-tab" class="tab-pane">
-                            <input type="text" placeholder="Search files..." class="search-input">
-                            <div class="search-results">Search results will appear here</div>
-                        </div>
-                        <div id="git-tab" class="tab-pane">
-                            <div class="git-status">
-                                <div>Branch: main</div>
-                                <div>Changes: 0</div>
-                            </div>
-                        </div>
-                        <div id="terminal-tab" class="tab-pane">
-                            <div id="xterm-terminal"></div>
-                        </div>
-                        <div id="claude-tab" class="tab-pane">
-                            <div id="claude-terminal"></div>
-                        </div>
-                    </div>
+            <!-- Editor Pane -->
+            <div class="pane active" id="editor-pane">
+                <div class="file-tree">
+                    <div class="tree-item">📁 src/</div>
+                    <div class="tree-item indent">📄 main.js</div>
+                    <div class="tree-item indent">📄 renderer.js</div>
+                    <div class="tree-item indent">📄 style.css</div>
+                    <div class="tree-item">📁 node_modules/</div>
+                    <div class="tree-item">📄 package.json</div>
+                    <div class="tree-item">📄 index.html</div>
                 </div>
-
+                <div id="codemirror-editor"></div>
             </div>
 
-            <!-- Right Panel - Browser -->
-            <div id="right-panel" class="panel">
-                <h2 class="panel-title">🌐 Browser</h2>
+            <!-- Terminal Pane -->
+            <div class="pane" id="terminal-pane">
+                <div id="xterm-terminal"></div>
+            </div>
+
+            <!-- Claude Pane -->
+            <div class="pane" id="claude-pane">
+                <div id="claude-terminal"></div>
+            </div>
+
+            <!-- Preview Pane (Browser) -->
+            <div class="pane" id="preview-pane">
                 <div class="browser-controls">
                     <button id="back-btn" class="btn-icon" title="Back">←</button>
                     <button id="forward-btn" class="btn-icon" title="Forward">→</button>
