@@ -107,6 +107,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize tab switching
     initializeTabSwitching();
 
+    // File tree click handlers
+    function initializeFileTree() {
+        const fileItems = document.querySelectorAll('.tree-item');
+        fileItems.forEach(item => {
+            // Only add click handlers to files (not folders)
+            if (item.textContent.includes('📄')) {
+                item.style.cursor = 'pointer';
+                item.addEventListener('click', async () => {
+                    const fileName = item.textContent.replace('📄 ', '').trim();
+                    
+                    // Switch to editor tab
+                    const editorTab = document.querySelector('[data-tab="editor"]');
+                    if (editorTab) {
+                        editorTab.click();
+                        
+                        // Wait a bit for editor to initialize, then load file
+                        setTimeout(async () => {
+                            if (window.codeMirrorEditor && window.electronAPI && window.electronAPI.readFile) {
+                                try {
+                                    const result = await window.electronAPI.readFile(fileName);
+                                    if (result.success) {
+                                        window.codeMirrorEditor.setValue(result.content);
+                                        console.log('File loaded:', fileName);
+                                        
+                                        // Show status
+                                        const statusEl = document.querySelector('footer span');
+                                        if (statusEl) {
+                                            const originalText = statusEl.textContent;
+                                            statusEl.textContent = `Opened: ${fileName}`;
+                                            setTimeout(() => {
+                                                statusEl.textContent = originalText;
+                                            }, 2000);
+                                        }
+                                    } else {
+                                        console.error('Failed to load file:', result.error);
+                                    }
+                                } catch (error) {
+                                    console.error('Error loading file:', error);
+                                }
+                            }
+                        }, 500);
+                    }
+                });
+            }
+        });
+    }
+    
+    // Initialize file tree
+    initializeFileTree();
+
     // Browser controls
     const urlBar = document.getElementById('url-bar');
     const goBtn = document.getElementById('go-btn');
@@ -317,9 +367,76 @@ document.addEventListener('DOMContentLoaded', async () => {
                         autoCloseBrackets: true,
                         matchBrackets: true,
                         indentUnit: 2,
-                        tabSize: 2
+                        tabSize: 2,
+                        extraKeys: {
+                            'Ctrl-S': function(cm) {
+                                saveFile(cm);
+                            },
+                            'Cmd-S': function(cm) {
+                                saveFile(cm);
+                            },
+                            'Ctrl-O': function(cm) {
+                                loadFile(cm);
+                            },
+                            'Cmd-O': function(cm) {
+                                loadFile(cm);
+                            }
+                        }
                     });
                     console.log('CodeMirror editor created successfully');
+                    
+                    // File operations
+                    async function saveFile(editor) {
+                        const content = editor.getValue();
+                        if (window.electronAPI && window.electronAPI.writeFile) {
+                            try {
+                                const result = await window.electronAPI.writeFile('/tmp/codemirror-file.js', content);
+                                if (result.success) {
+                                    console.log('File saved successfully');
+                                    // Show status in footer
+                                    const statusEl = document.querySelector('footer span');
+                                    if (statusEl) {
+                                        const originalText = statusEl.textContent;
+                                        statusEl.textContent = 'File saved';
+                                        setTimeout(() => {
+                                            statusEl.textContent = originalText;
+                                        }, 2000);
+                                    }
+                                } else {
+                                    console.error('Failed to save file:', result.error);
+                                }
+                            } catch (error) {
+                                console.error('Error saving file:', error);
+                            }
+                        }
+                    }
+                    
+                    async function loadFile(editor) {
+                        if (window.electronAPI && window.electronAPI.readFile) {
+                            try {
+                                const result = await window.electronAPI.readFile('/tmp/codemirror-file.js');
+                                if (result.success) {
+                                    editor.setValue(result.content);
+                                    console.log('File loaded successfully');
+                                    // Show status in footer
+                                    const statusEl = document.querySelector('footer span');
+                                    if (statusEl) {
+                                        const originalText = statusEl.textContent;
+                                        statusEl.textContent = 'File loaded';
+                                        setTimeout(() => {
+                                            statusEl.textContent = originalText;
+                                        }, 2000);
+                                    }
+                                } else {
+                                    console.error('Failed to load file:', result.error);
+                                    // Try to create new file if it doesn't exist
+                                    editor.setValue('// New file\nfunction hello() {\n  console.log("Hello CodeMirror!");\n}');
+                                }
+                            } catch (error) {
+                                console.error('Error loading file:', error);
+                            }
+                        }
+                    }
                 };
                 document.head.appendChild(jsMode);
             };

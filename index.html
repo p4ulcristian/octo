@@ -22,14 +22,13 @@
                 <div id="main-left-panel" class="panel">
                     <h2 class="panel-title">📁 Explorer</h2>
                     <div class="tab-navigation">
-                        <button class="tab-btn active" data-tab="files">Files</button>
+                        <button class="tab-btn active" data-tab="editor">Editor</button>
                         <button class="tab-btn" data-tab="search">Search</button>
                         <button class="tab-btn" data-tab="git">Git</button>
-                        <button class="tab-btn" data-tab="editor">Editor</button>
                         <button class="tab-btn" data-tab="terminal">Terminal</button>
                     </div>
                     <div class="panel-content">
-                        <div id="files-tab" class="tab-pane active">
+                        <div id="editor-tab" class="tab-pane active">
                             <div class="file-tree">
                                 <div class="tree-item">📁 src/</div>
                                 <div class="tree-item indent">📄 main.js</div>
@@ -39,6 +38,7 @@
                                 <div class="tree-item">📄 package.json</div>
                                 <div class="tree-item">📄 index.html</div>
                             </div>
+                            <div id="codemirror-editor"></div>
                         </div>
                         <div id="search-tab" class="tab-pane">
                             <input type="text" placeholder="Search files..." class="search-input">
@@ -49,9 +49,6 @@
                                 <div>Branch: main</div>
                                 <div>Changes: 0</div>
                             </div>
-                        </div>
-                        <div id="editor-tab" class="tab-pane">
-                            <div id="codemirror-editor"></div>
                         </div>
                         <div id="terminal-tab" class="tab-pane">
                             <div id="xterm-terminal"></div>
