@@ -450,8 +450,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             topBarElement.textContent = displayText;
             activePaneId = paneId;
             activePaneType = contentType;
+            
         }
     }
+    
     
     function getPaneName(paneId) {
         switch(paneId) {
@@ -501,6 +503,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
+    // Add global click listener to detect clicks on browser areas
+    
     // Initialize circle button functionality
     function initializeCircleButtons() {
         const circles = document.querySelectorAll('.circle');
@@ -513,8 +517,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 console.log(`Selected ${contentType} for pane ${paneId}`);
                 
-                // Select the pane and update top bar
-                selectPane(paneId, contentType);
                 
                 // Clear the pane
                 pane.innerHTML = '';
@@ -763,6 +765,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         browserMount.innerHTML = '<div class="browser-placeholder"><p>Loading browser...</p></div>';
         previewDiv.appendChild(browserMount);
         
+        
         // Send browser mount bounds for this specific pane
         function updateBrowserMountBounds() {
             const rect = browserMount.getBoundingClientRect();
@@ -793,6 +796,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update bounds after a short delay to ensure proper positioning
         setTimeout(updateBrowserMountBounds, 200);
         
+        
         contentInstances.previews[paneId] = { 
             previewDiv, 
             browserMount, 
@@ -813,10 +817,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // Initialize header buttons
+    function initializeHeaderButtons() {
+        const playBtn = document.getElementById('play-btn');
+        const scriptBtn = document.getElementById('script-btn');
+        const devtoolsBtn = document.getElementById('devtools-btn');
+        
+        if (playBtn) {
+            playBtn.addEventListener('click', () => {
+                console.log('Play button clicked - TODO: implement play functionality');
+            });
+        }
+        
+        if (scriptBtn) {
+            scriptBtn.addEventListener('click', () => {
+                console.log('Script button clicked - TODO: implement script functionality');
+            });
+        }
+        
+        if (devtoolsBtn) {
+            devtoolsBtn.addEventListener('click', () => {
+                console.log('DevTools button clicked - TODO: implement DevTools functionality');
+            });
+        }
+    }
+
     // Initialize circle buttons and pane click handlers
     setTimeout(() => {
         initializeCircleButtons();
         initializePaneClickHandlers();
+        initializeHeaderButtons();
     }, 200);
 
     console.log('Application initialized');
