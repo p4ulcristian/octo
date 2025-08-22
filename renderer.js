@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         cursor: 'col-resize',
                         onDragEnd: function(sizes) {
                             console.log('Main split drag ended, sizes:', sizes);
+                            setTimeout(updateAllBrowserMounts, 100);
                         }
                     });
                     console.log('Main Split.js initialized successfully');
@@ -71,6 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             cursor: 'row-resize',
                             onDragEnd: function(sizes) {
                                 console.log('Editor split drag ended, sizes:', sizes);
+                                setTimeout(updateAllBrowserMounts, 100);
                             }
                         });
                         console.log('Editor Split.js initialized successfully');
@@ -97,6 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             cursor: 'row-resize',
                             onDragEnd: function(sizes) {
                                 console.log('Terminal-Claude split drag ended, sizes:', sizes);
+                                setTimeout(updateAllBrowserMounts, 100);
                             }
                         });
                         console.log('Terminal-Claude Split.js initialized successfully');
@@ -167,7 +170,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Browser mount bounds will be updated when preview panes are created
+    // Function to update active browser mount bounds
+    function updateAllBrowserMounts() {
+        Object.values(contentInstances.previews).forEach(preview => {
+            if (preview && preview.updateBounds && preview.browserMount && preview.browserMount.classList.contains('active-browser-mount')) {
+                preview.updateBounds();
+            }
+        });
+    }
+
+    // Add window resize listener to update browser mounts
+    window.addEventListener('resize', () => {
+        setTimeout(updateAllBrowserMounts, 100);
+    });
 
 
     // CodeMirror Editor
@@ -423,6 +438,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         previews: {}
     };
     
+    // Active pane tracking
+    let activePaneId = null;
+    let activePaneType = null;
+    
+    function updateTopBar(paneId, contentType) {
+        const topBarElement = document.getElementById('active-pane-name');
+        if (topBarElement) {
+            const paneName = getPaneName(paneId);
+            const displayText = `${paneName} - ${contentType.charAt(0).toUpperCase() + contentType.slice(1)}`;
+            topBarElement.textContent = displayText;
+            activePaneId = paneId;
+            activePaneType = contentType;
+        }
+    }
+    
+    function getPaneName(paneId) {
+        switch(paneId) {
+            case 'editor-top-pane': return 'Top Left';
+            case 'claude-pane': return 'Top Right';
+            case 'editor-bottom-pane': return 'Bottom Left';
+            case 'terminal-pane': return 'Bottom Right';
+            default: return paneId;
+        }
+    }
+    
     // Initialize circle button functionality
     function initializeCircleButtons() {
         const circles = document.querySelectorAll('.circle');
@@ -434,6 +474,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const paneId = pane.id;
                 
                 console.log(`Selected ${contentType} for pane ${paneId}`);
+                
+                // Update top bar
+                updateTopBar(paneId, contentType);
                 
                 // Clear the pane
                 pane.innerHTML = '';
@@ -655,47 +698,70 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewDiv.style.width = '100%';
         pane.appendChild(previewDiv);
         
-        // Create browser controls
-        const browserControls = document.createElement('div');
-        browserControls.className = 'browser-controls';
-        browserControls.innerHTML = `
-            <button class="btn-icon" title="Back">←</button>
-            <button class="btn-icon" title="Forward">→</button>
-            <button class="btn-icon" title="Refresh">⟳</button>
-            <input type="text" class="url-bar" value="https://localhost/customize" placeholder="Enter URL...">
-            <button class="btn btn-primary">Go</button>
-            <button class="btn btn-secondary">DevTools</button>
-        `;
-        previewDiv.appendChild(browserControls);
+        // Create browser controls (commented out for now)
+        // const browserControls = document.createElement('div');
+        // browserControls.className = 'browser-controls';
+        // browserControls.innerHTML = `
+        //     <button class="btn-icon" title="Back">←</button>
+        //     <button class="btn-icon" title="Forward">→</button>
+        //     <button class="btn-icon" title="Refresh">⟳</button>
+        //     <input type="text" class="url-bar" value="https://localhost/customize" placeholder="Enter URL...">
+        //     <button class="btn btn-primary">Go</button>
+        //     <button class="btn btn-secondary">DevTools</button>
+        // `;
+        // previewDiv.appendChild(browserControls);
         
-        // Create browser mount area
+        // Create browser mount area (takes full pane since no controls)
         const browserMount = document.createElement('div');
         browserMount.className = 'browser-mount';
         browserMount.id = `browser-mount-${paneId}`;
-        browserMount.style.flex = '1';
+        browserMount.style.width = '100%';
+        browserMount.style.height = '100%';
         browserMount.style.position = 'relative';
         browserMount.style.background = '#f9f9f9';
         browserMount.style.border = '2px dashed #ccc';
+        browserMount.style.overflow = 'hidden';
+        browserMount.style.boxSizing = 'border-box';
         browserMount.innerHTML = '<div class="browser-placeholder"><p>Loading browser...</p></div>';
         previewDiv.appendChild(browserMount);
         
         // Send browser mount bounds for this specific pane
         function updateBrowserMountBounds() {
             const rect = browserMount.getBoundingClientRect();
-            if (window.electronAPI && window.electronAPI.sendBrowserMountBounds) {
-                window.electronAPI.sendBrowserMountBounds({
-                    x: rect.left,
-                    y: rect.top,
-                    width: rect.width,
-                    height: rect.height
-                });
+            if (window.electronAPI && window.electronAPI.sendBrowserMountBounds && rect.width > 0 && rect.height > 0) {
+                // Adjust bounds to account for borders and padding
+                const adjustedBounds = {
+                    x: Math.floor(rect.left + 2), // Account for 2px dashed border
+                    y: Math.floor(rect.top + 2),  // Account for 2px dashed border
+                    width: Math.floor(rect.width - 4), // Subtract both borders (2px each side)
+                    height: Math.floor(rect.height - 4) // Subtract both borders (2px each side)
+                };
+                
+                console.log(`Updating browser bounds for ${paneId}:`, adjustedBounds);
+                window.electronAPI.sendBrowserMountBounds(adjustedBounds);
             }
         }
         
-        // Update bounds after a short delay to ensure proper positioning
-        setTimeout(updateBrowserMountBounds, 100);
+        // Clear any existing active browser mounts (only one can be active)
+        Object.values(contentInstances.previews).forEach(preview => {
+            if (preview && preview.browserMount) {
+                preview.browserMount.classList.remove('active-browser-mount');
+            }
+        });
         
-        contentInstances.previews[paneId] = { previewDiv, browserMount, updateBounds: updateBrowserMountBounds };
+        // Mark this as the active browser mount
+        browserMount.classList.add('active-browser-mount');
+        
+        // Update bounds after a short delay to ensure proper positioning
+        setTimeout(updateBrowserMountBounds, 200);
+        
+        contentInstances.previews[paneId] = { 
+            previewDiv, 
+            browserMount, 
+            updateBounds: updateBrowserMountBounds,
+            isActive: true
+        };
+        
         console.log('Preview with browser controls initialized for', paneId);
     }
     

@@ -18,6 +18,18 @@ body {
     flex-direction: column;
 }
 
+.top-bar {
+    background: #2d2d30;
+    border-bottom: 1px solid #3e3e42;
+    padding: 8px 16px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    color: #cccccc;
+    font-size: 13px;
+    font-weight: 500;
+}
+
 header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -159,6 +171,8 @@ header h1 {
     background: #f9f9f9;
     border: 2px dashed #ccc;
     height: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .browser-placeholder {
