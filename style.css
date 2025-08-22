@@ -97,6 +97,15 @@ header h1 {
     height: 100vh;
 }
 
+/* Set 60-40 split for main horizontal layout */
+#editor-pane {
+    flex: 6; /* 60% */
+}
+
+#terminal-claude-pane {
+    flex: 4; /* 40% */
+}
+
 .splitpanes {
     width: 100%;
     height: 100%;
@@ -114,9 +123,25 @@ header h1 {
 #editor-pane {
     height: 100%;
     width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-#editor-top-pane, #editor-bottom-pane {
+/* Set 60-40 vertical split for editor pane */
+#editor-top-pane {
+    flex: 6; /* 60% */
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+#editor-bottom-pane {
+    flex: 4; /* 40% */
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     overflow: hidden;
@@ -140,9 +165,25 @@ header h1 {
 #terminal-claude-pane {
     height: 100%;
     width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-#claude-pane, #terminal-pane {
+/* Set 60-40 vertical split for terminal-claude pane */
+#claude-pane {
+    flex: 6; /* 60% */
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+#terminal-pane {
+    flex: 4; /* 40% */
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     overflow: hidden;
@@ -802,6 +843,17 @@ footer {
 .editor-main {
     flex: 1;
     height: 100%;
+    background: #1e1e1e;
+}
+
+/* Loading Content */
+.loading-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #858585;
+    font-size: 14px;
     background: #1e1e1e;
 }
 

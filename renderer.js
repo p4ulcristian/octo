@@ -1392,7 +1392,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         initializeCircleButtons();
         initializePaneClickHandlers();
         initializeHeaderButtons();
+        initializeDefaultLayout();
     }, 200);
+    
+    function initializeDefaultLayout() {
+        console.log('Setting up default layout...');
+        
+        // Top Left: Browser (preview)
+        const topLeftPane = document.getElementById('editor-top-pane');
+        if (topLeftPane) {
+            topLeftPane.innerHTML = '';
+            initializePreviewInPane(topLeftPane, 'editor-top-pane');
+        }
+        
+        // Top Right: Terminal
+        const topRightPane = document.getElementById('claude-pane');
+        if (topRightPane) {
+            topRightPane.innerHTML = '';
+            initializeTerminalInPane(topRightPane, 'claude-pane');
+        }
+        
+        // Bottom Left: Claude
+        const bottomLeftPane = document.getElementById('editor-bottom-pane');
+        if (bottomLeftPane) {
+            bottomLeftPane.innerHTML = '';
+            initializeClaudeInPane(bottomLeftPane, 'editor-bottom-pane');
+        }
+        
+        // Bottom Right: Editor
+        const bottomRightPane = document.getElementById('terminal-pane');
+        if (bottomRightPane) {
+            bottomRightPane.innerHTML = '';
+            initializeEditorInPane(bottomRightPane, 'terminal-pane');
+        }
+        
+        console.log('Default layout initialized');
+    }
 
     console.log('Application initialized');
 });
