@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   hideBrowserView: () => ipcRenderer.send('hide-browser-view'),
   showBrowserView: () => ipcRenderer.send('show-browser-view'),
   selectFolder: () => ipcRenderer.invoke('select-folder'),
+  listFiles: (dirPath) => ipcRenderer.invoke('list-files', dirPath),
+  readTextFile: (filePath) => ipcRenderer.invoke('read-text-file', filePath),
+  writeTextFile: (filePath, content) => ipcRenderer.invoke('write-text-file', filePath, content),
   onBrowserNavigated: (callback) => {
     ipcRenderer.on('browser-navigated', (event, url) => callback(url));
   },

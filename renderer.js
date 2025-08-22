@@ -701,11 +701,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function initializeEditorInPane(pane, paneId) {
+        const editorContainer = document.createElement('div');
+        editorContainer.id = `editor-container-${paneId}`;
+        editorContainer.style.height = '100%';
+        editorContainer.style.width = '100%';
+        editorContainer.style.display = 'flex';
+        pane.appendChild(editorContainer);
+        
+        // Create file explorer sidebar
+        const sidebar = document.createElement('div');
+        sidebar.className = 'editor-sidebar';
+        sidebar.innerHTML = `
+            <div class="sidebar-header">
+                <h4>Explorer</h4>
+                <button class="refresh-btn" title="Refresh">⟳</button>
+            </div>
+            <div class="file-tree" id="file-tree-${paneId}">
+                <div class="loading">Loading files...</div>
+            </div>
+        `;
+        editorContainer.appendChild(sidebar);
+        
+        // Create editor area
         const editorDiv = document.createElement('div');
         editorDiv.id = `editor-${paneId}`;
+        editorDiv.className = 'editor-main';
+        editorDiv.style.flex = '1';
         editorDiv.style.height = '100%';
-        editorDiv.style.width = '100%';
-        pane.appendChild(editorDiv);
+        editorContainer.appendChild(editorDiv);
+        
+        // Load file tree
+        loadFileTree(paneId);
+        
+        // Add refresh button functionality
+        const refreshBtn = sidebar.querySelector('.refresh-btn');
+        refreshBtn.addEventListener('click', () => loadFileTree(paneId));
         
         // Create CodeMirror editor
         const script = document.createElement('script');
@@ -715,7 +745,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             jsMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js';
             jsMode.onload = () => {
                 const editor = CodeMirror(editorDiv, {
-                    value: `// Editor in ${paneId}\nfunction hello() {\n  console.log("Hello from ${paneId}!");\n}`,
+                    value: `// Editor in ${paneId}\n// Select a file from the explorer to edit`,
                     mode: 'javascript',
                     theme: 'dracula',
                     lineNumbers: true,
@@ -839,6 +869,102 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'terminal': return '#ff6b6b';
             case 'preview': return '#ffd93d';
             default: return '#cccccc';
+        }
+    }
+    
+    async function loadFileTree(paneId) {
+        const projectPath = localStorage.getItem('octo-project-path');
+        const fileTreeContainer = document.getElementById(`file-tree-${paneId}`);
+        
+        if (!projectPath || !projectPath.trim()) {
+            fileTreeContainer.innerHTML = `
+                <div class="no-project">
+                    <p>No project path set</p>
+                    <p>Use the 📁 button to set project path</p>
+                </div>
+            `;
+            return;
+        }
+        
+        try {
+            fileTreeContainer.innerHTML = '<div class="loading">Loading files...</div>';
+            const files = await window.electronAPI.listFiles(projectPath);
+            renderFileTree(files, fileTreeContainer, paneId);
+        } catch (error) {
+            console.error('Error loading file tree:', error);
+            fileTreeContainer.innerHTML = `
+                <div class="error">
+                    <p>Error loading files</p>
+                    <p>${error.message}</p>
+                </div>
+            `;
+        }
+    }
+    
+    function renderFileTree(files, container, paneId) {
+        if (!files || files.length === 0) {
+            container.innerHTML = '<div class="empty">No files found</div>';
+            return;
+        }
+        
+        // Sort: directories first, then files
+        files.sort((a, b) => {
+            if (a.isDirectory && !b.isDirectory) return -1;
+            if (!a.isDirectory && b.isDirectory) return 1;
+            return a.name.localeCompare(b.name);
+        });
+        
+        const fileList = document.createElement('div');
+        fileList.className = 'file-list';
+        
+        files.forEach(file => {
+            if (file.name.startsWith('.')) return; // Skip hidden files
+            
+            const fileItem = document.createElement('div');
+            fileItem.className = `file-item ${file.isDirectory ? 'directory' : 'file'}`;
+            fileItem.innerHTML = `
+                <span class="file-icon">${file.isDirectory ? '📁' : '📄'}</span>
+                <span class="file-name">${file.name}</span>
+            `;
+            
+            if (!file.isDirectory) {
+                fileItem.addEventListener('click', () => openFile(file.path, paneId));
+                fileItem.style.cursor = 'pointer';
+            }
+            
+            fileList.appendChild(fileItem);
+        });
+        
+        container.innerHTML = '';
+        container.appendChild(fileList);
+    }
+    
+    async function openFile(filePath, paneId) {
+        try {
+            const content = await window.electronAPI.readTextFile(filePath);
+            const editor = contentInstances.editors[paneId];
+            if (editor) {
+                editor.setValue(content);
+                
+                // Set mode based on file extension
+                const ext = filePath.split('.').pop().toLowerCase();
+                let mode = 'javascript';
+                switch(ext) {
+                    case 'js': mode = 'javascript'; break;
+                    case 'ts': mode = 'javascript'; break; // Basic JS highlighting
+                    case 'html': mode = 'xml'; break;
+                    case 'css': mode = 'css'; break;
+                    case 'json': mode = 'javascript'; break;
+                    case 'md': mode = 'markdown'; break;
+                    default: mode = 'text';
+                }
+                editor.setOption('mode', mode);
+                
+                console.log(`Opened file: ${filePath}`);
+            }
+        } catch (error) {
+            console.error('Error opening file:', error);
+            alert(`Error opening file: ${error.message}`);
         }
     }
     

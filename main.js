@@ -17,6 +17,10 @@ let ptyProcess = null;
 let claudePtyProcess = null;
 
 function createWindow() {
+  const iconPath = path.join(__dirname, 'icon.png');
+  console.log('Icon path:', iconPath);
+  console.log('Icon exists:', require('fs').existsSync(iconPath));
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 800,
@@ -25,8 +29,11 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     },
-    icon: path.join(__dirname, 'icon.png')
+    icon: iconPath
   });
+
+  // Alternative: Set icon after window creation
+  mainWindow.setIcon(iconPath);
 
   mainWindow.loadFile('index.html');
 
@@ -123,6 +130,40 @@ function createWindow() {
     }
     
     return result.filePaths[0];
+  });
+
+  ipcMain.handle('list-files', async (event, dirPath) => {
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      return entries.map(entry => ({
+        name: entry.name,
+        isDirectory: entry.isDirectory(),
+        path: path.join(dirPath, entry.name)
+      }));
+    } catch (error) {
+      console.error('Error reading directory:', error);
+      return [];
+    }
+  });
+
+  ipcMain.handle('read-text-file', async (event, filePath) => {
+    try {
+      const content = await fs.readFile(filePath, 'utf8');
+      return content;
+    } catch (error) {
+      console.error('Error reading file:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('write-text-file', async (event, filePath, content) => {
+    try {
+      await fs.writeFile(filePath, content, 'utf8');
+      return true;
+    } catch (error) {
+      console.error('Error writing file:', error);
+      throw error;
+    }
   });
 
   browserView.webContents.on('did-navigate', (event, url) => {
