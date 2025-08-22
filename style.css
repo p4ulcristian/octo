@@ -443,6 +443,84 @@ body {
     background: #f0f0f0;
 }
 
+/* Settings Popup */
+.settings-popup {
+    position: fixed;
+    z-index: 10000;
+}
+
+.settings-popup-content {
+    background: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 6px;
+    padding: 20px;
+    width: 400px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.settings-popup-content h3 {
+    color: #ffffff;
+    margin: 0 0 20px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.settings-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #3e3e42;
+}
+
+.settings-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.settings-section h4 {
+    color: #cccccc;
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.settings-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.settings-popup-content input,
+.settings-popup-content textarea {
+    flex: 1;
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    color: #ffffff;
+    padding: 8px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+.settings-popup-content textarea {
+    height: 80px;
+    resize: none;
+}
+
+.settings-popup-content input:focus,
+.settings-popup-content textarea:focus {
+    outline: none;
+    border-color: #0e639c;
+}
+
+.settings-popup-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
 /* Script Popup */
 .script-popup {
     position: fixed;

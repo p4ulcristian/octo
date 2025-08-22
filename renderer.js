@@ -573,28 +573,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     function initializeExplorerComponent(container, componentState, componentId) {
         const element = container.getElement();
         
-        // Set the container to use flex layout
-        element.css({
-            display: 'flex',
-            flexDirection: 'row',
-            height: '100%',
-            width: '100%'
-        });
-        
         element.html(`
-            <div class="editor-sidebar" style="width: 250px; border-right: 1px solid #333; height: 100%;">
-                <div class="sidebar-header" style="padding: 8px; border-bottom: 1px solid #333;">
-                    <h4 style="margin: 0; font-size: 14px; color: #cccccc;">Explorer</h4>
-                    <button class="refresh-btn" title="Refresh" style="float: right; background: none; border: none; color: #cccccc; cursor: pointer;">⟳</button>
+            <div class="explorer-container" style="width: 100%; height: 100%; background: #252526; display: flex; flex-direction: column;">
+                <div class="explorer-header" style="padding: 8px 12px; background: #2d2d30; border-bottom: 1px solid #3e3e42; display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0; font-size: 12px; color: #cccccc; text-transform: uppercase; letter-spacing: 0.5px;">Explorer</h4>
+                    <button class="refresh-btn" title="Refresh" style="background: none; border: none; color: #cccccc; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 3px;">⟳</button>
                 </div>
-                <div class="file-tree" id="file-tree-${componentId}" style="padding: 8px; overflow-y: auto; height: calc(100% - 40px);">
-                    <div class="loading">Loading files...</div>
+                <div class="file-tree" id="file-tree-${componentId}" style="flex: 1; padding: 8px; overflow-y: auto;">
+                    <div class="loading" style="color: #858585; text-align: center; padding: 20px;">Loading files...</div>
                 </div>
             </div>
-            <div id="editor-${componentId}" class="editor-main" style="flex: 1; height: 100%; display: flex; flex-direction: column;"></div>
         `);
 
-        const editorDiv = element.find(`#editor-${componentId}`)[0];
         const fileTree = element.find(`#file-tree-${componentId}`)[0];
         const refreshBtn = element.find('.refresh-btn')[0];
 
@@ -603,85 +593,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Add refresh button functionality
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => loadFileTree(componentId, fileTree));
-        }
-        
-        let editor = null;
-        
-        // Initialize CodeMirror
-        loadCodeMirror(() => {
-            console.log('Attempting to initialize CodeMirror for', componentId);
-            console.log('editorDiv exists:', !!editorDiv);
-            console.log('editorDiv offsetParent:', editorDiv?.offsetParent);
+            refreshBtn.addEventListener('click', () => {
+                console.log('Refreshing file tree');
+                loadFileTree(componentId, fileTree);
+            });
             
-            // Try to initialize even if not immediately visible
-            if (editorDiv) {
-                try {
-                    editor = CodeMirror(editorDiv, {
-                        value: `;; Editor in ${componentId}\n;; Select a file from the explorer to edit\n(println "Hello from Octo!")`,
-                        mode: 'clojure',
-                        theme: 'dracula',
-                        lineNumbers: true,
-                        autoCloseBrackets: true,
-                        matchBrackets: true,
-                        indentUnit: 2,
-                        tabSize: 2,
-                        viewportMargin: Infinity
-                    });
-                    
-                    contentInstances.editors[componentId] = { editor, fileTree };
-                    console.log('CodeMirror editor successfully initialized for', componentId);
-                    console.log('Editor instance stored:', contentInstances.editors[componentId]);
-                    
-                    // Refresh the editor after a brief delay to ensure it's rendered properly
-                    setTimeout(() => {
-                        if (editor) {
-                            editor.refresh();
-                            editor.setSize(null, '100%');
-                            console.log('Editor refreshed and sized');
-                        }
-                    }, 100);
-                    
-                    // Also refresh when the tab becomes active
-                    setTimeout(() => {
-                        if (editor) {
-                            editor.refresh();
-                            editor.setSize(null, '100%');
-                        }
-                    }, 500);
-                } catch (error) {
-                    console.error('Failed to initialize CodeMirror:', error);
-                }
-            } else {
-                console.error('editorDiv not found for', componentId);
-            }
-        });
-        
-        // Force refresh when container resizes
-        function handleResize() {
-            setTimeout(() => {
-                if (editor) {
-                    editor.refresh();
-                    editor.setSize(null, '100%');
-                }
-            }, 10);
+            // Add hover effect for refresh button
+            refreshBtn.addEventListener('mouseenter', () => {
+                refreshBtn.style.background = '#3e3e42';
+            });
+            refreshBtn.addEventListener('mouseleave', () => {
+                refreshBtn.style.background = 'none';
+            });
         }
-        
-        container.on('resize', handleResize);
 
         // Cleanup function
         cleanupFunctions[componentId] = function() {
-            if (contentInstances.editors[componentId]) {
-                if (contentInstances.editors[componentId].editor) {
-                    // CodeMirror cleanup
-                    const cmElement = contentInstances.editors[componentId].editor.getWrapperElement();
-                    if (cmElement && cmElement.parentNode) {
-                        cmElement.parentNode.removeChild(cmElement);
-                    }
-                }
-                delete contentInstances.editors[componentId];
-            }
-            container.off('resize', handleResize);
+            // Clean up any event listeners if needed
+            console.log('Explorer component cleaned up:', componentId);
         };
     }
 
@@ -1048,12 +977,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize header buttons (keeping existing functionality)
     function initializeHeaderButtons() {
         const playBtn = document.getElementById('play-btn');
-        const scriptBtn = document.getElementById('script-btn');
-        const newEditorBtn = document.getElementById('new-editor-btn');
+        const settingsBtn = document.getElementById('settings-btn');
         const devtoolsBtn = document.getElementById('devtools-btn');
         const refreshBtn = document.getElementById('refresh-btn');
-        const projectPathBtn = document.getElementById('project-path-btn');
-        const previewUrlBtn = document.getElementById('preview-url-btn');
         
         // Check if there's a saved script and update button appearance
         function updateScriptButtonAppearance() {
@@ -1094,33 +1020,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
-        if (scriptBtn) {
-            updateScriptButtonAppearance();
-            
-            scriptBtn.addEventListener('click', (e) => {
-                console.log('Script button clicked - showing popup');
-                showScriptPopup(e.target, updateScriptButtonAppearance);
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', (e) => {
+                console.log('Settings button clicked - showing popup');
+                showSettingsPopup(e.target);
             });
         }
 
-        if (newEditorBtn) {
-            newEditorBtn.addEventListener('click', (e) => {
-                console.log('New Editor button clicked - creating new editor tab');
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Force browser view to hide to prevent interference
-                console.log('Hiding browser view before creating new editor tab');
-                if (window.electronAPI && window.electronAPI.hideBrowserView) {
-                    window.electronAPI.hideBrowserView();
-                }
-                
-                // Small delay to ensure browser view is hidden
-                setTimeout(() => {
-                    createNewEditorTab();
-                }, 50);
-            });
-        }
 
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => {
@@ -1140,22 +1046,127 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        if (projectPathBtn) {
-            projectPathBtn.addEventListener('click', (e) => {
-                console.log('Project Path button clicked - showing popup');
-                showProjectPathPopup(e.target);
-            });
-        }
-        
-        if (previewUrlBtn) {
-            previewUrlBtn.addEventListener('click', (e) => {
-                console.log('Preview URL button clicked - showing popup');
-                showPreviewUrlPopup(e.target);
-            });
-        }
     }
 
     // Add all the missing popup and script functions
+    function showSettingsPopup(buttonElement) {
+        // Remove any existing popup
+        const existingPopup = document.querySelector('.settings-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+        
+        // Create popup
+        const popup = document.createElement('div');
+        popup.className = 'settings-popup';
+        
+        // Position it near the button
+        const rect = buttonElement.getBoundingClientRect();
+        popup.style.left = rect.right + 10 + 'px';
+        popup.style.top = rect.top + 'px';
+        
+        // Get saved values
+        const savedScript = localStorage.getItem('octo-script') || '';
+        const savedProjectPath = localStorage.getItem('octo-project-path') || '';
+        const savedPreviewUrl = localStorage.getItem('octo-preview-url') || '';
+        
+        popup.innerHTML = `
+            <div class="settings-popup-content">
+                <h3>Settings</h3>
+                
+                <div class="settings-section">
+                    <h4>Project Path</h4>
+                    <div class="settings-input-group">
+                        <input type="text" id="project-path-input" placeholder="/path/to/project" value="${savedProjectPath.replace(/"/g, '&quot;')}">
+                        <button class="btn btn-secondary" id="browse-project-btn">Browse</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Preview URL</h4>
+                    <input type="text" id="preview-url-input" placeholder="http://localhost:3000" value="${savedPreviewUrl.replace(/"/g, '&quot;')}">
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Script</h4>
+                    <textarea id="script-input" placeholder="Enter script commands...">${savedScript}</textarea>
+                </div>
+                
+                <div class="settings-popup-buttons">
+                    <button class="btn btn-secondary" id="cancel-settings-btn">Cancel</button>
+                    <button class="btn btn-primary" id="save-settings-btn">Save</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        
+        // Add event handlers
+        const projectInput = popup.querySelector('#project-path-input');
+        const previewInput = popup.querySelector('#preview-url-input');
+        const scriptInput = popup.querySelector('#script-input');
+        const browseBtn = popup.querySelector('#browse-project-btn');
+        const cancelBtn = popup.querySelector('#cancel-settings-btn');
+        const saveBtn = popup.querySelector('#save-settings-btn');
+        
+        browseBtn.addEventListener('click', async () => {
+            if (window.electronAPI && window.electronAPI.selectDirectory) {
+                const path = await window.electronAPI.selectDirectory();
+                if (path) {
+                    projectInput.value = path;
+                }
+            }
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            popup.remove();
+        });
+        
+        saveBtn.addEventListener('click', () => {
+            // Save all settings
+            localStorage.setItem('octo-project-path', projectInput.value);
+            localStorage.setItem('octo-preview-url', previewInput.value);
+            localStorage.setItem('octo-script', scriptInput.value);
+            
+            // Update play button appearance if script is saved
+            const playBtn = document.getElementById('play-btn');
+            if (scriptInput.value.trim()) {
+                if (playBtn) {
+                    playBtn.style.background = '#67ea94';
+                    playBtn.style.color = '#1e1e1e';
+                    playBtn.title = 'Run Script';
+                }
+            } else {
+                if (playBtn) {
+                    playBtn.style.background = '';
+                    playBtn.style.color = '';
+                    playBtn.title = 'Play';
+                }
+            }
+            
+            // Navigate browser if preview URL is set
+            if (previewInput.value.trim()) {
+                if (window.electronAPI && window.electronAPI.navigateBrowser) {
+                    window.electronAPI.navigateBrowser(previewInput.value);
+                }
+            }
+            
+            popup.remove();
+            showSaveNotification('Settings saved');
+        });
+        
+        // Close on click outside
+        setTimeout(() => {
+            const clickOutside = (e) => {
+                if (!popup.contains(e.target) && e.target !== buttonElement) {
+                    popup.remove();
+                    document.removeEventListener('click', clickOutside);
+                }
+            };
+            document.addEventListener('click', clickOutside);
+        }, 10);
+    }
+    
     function showScriptPopup(buttonElement, updateButtonCallback) {
         // Remove any existing popup
         const existingPopup = document.querySelector('.script-popup');
@@ -1460,6 +1471,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.electronAPI && window.electronAPI.terminalStart) {
             window.electronAPI.terminalStart().then(() => {
                 console.log('Terminal process started for active tab:', componentId);
+                
+                // Change to project directory if set
+                const projectPath = localStorage.getItem('octo-project-path');
+                if (projectPath && projectPath.trim()) {
+                    console.log('Changing terminal directory to:', projectPath);
+                    window.electronAPI.terminalWrite(`cd "${projectPath}"\n`);
+                }
             }).catch((error) => {
                 console.error('Failed to start terminal process for active tab:', error);
             });
@@ -1636,14 +1654,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
             window.electronAPI.claudeTerminalStart().then(() => {
                 console.log('Claude terminal process started for active tab:', componentId);
+                
+                // Change to project directory if set
+                const projectPath = localStorage.getItem('octo-project-path');
+                if (projectPath && projectPath.trim()) {
+                    console.log('Changing Claude terminal directory to:', projectPath);
+                    window.electronAPI.claudeTerminalWrite(`cd "${projectPath}"\n`);
+                }
             }).catch((error) => {
                 console.error('Failed to start Claude terminal process for active tab:', error);
             });
         }
         
         // Handle data from Claude terminal
-        if (window.electronAPI && window.electronAPI.onClaudeTerminalData) {
-            window.electronAPI.onClaudeTerminalData((data) => {
+        if (window.electronAPI && window.electronAPI.onClaudeTerminalOutput) {
+            window.electronAPI.onClaudeTerminalOutput((data) => {
                 if (claudeTerminal) {
                     claudeTerminal.write(data);
                 }
