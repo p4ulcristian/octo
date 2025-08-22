@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     splitInstance = Split(paneIds, {
                         sizes: Array(paneIds.length).fill(100 / paneIds.length),
                         minSize: Array(paneIds.length).fill(0),
-                        gutterSize: 8,
+                        gutterSize: 15,
                         cursor: 'col-resize',
                         onDragEnd: function(sizes) {
                             console.log('Split drag ended, sizes:', sizes);

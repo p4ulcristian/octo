@@ -139,26 +139,58 @@ header h1 {
 
 /* Gutter Styles */
 .gutter {
-    background-color: #ddd;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     background-repeat: no-repeat;
     background-position: 50%;
-    transition: background-color 0.3s;
+    transition: all 0.3s;
+    position: relative;
 }
 
 .gutter.gutter-horizontal {
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
     cursor: col-resize;
-    width: 5px !important;
+    width: 15px !important;
+    background: linear-gradient(90deg, transparent 30%, #667eea 45%, #764ba2 55%, transparent 70%);
+}
+
+.gutter.gutter-horizontal::before {
+    content: '⋮';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+    font-weight: bold;
 }
 
 .gutter.gutter-vertical {
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=');
     cursor: row-resize;
-    height: 5px !important;
+    height: 15px !important;
+    background: linear-gradient(180deg, transparent 30%, #667eea 45%, #764ba2 55%, transparent 70%);
+}
+
+.gutter.gutter-vertical::before {
+    content: '⋯';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+    letter-spacing: 2px;
 }
 
 .gutter:hover {
-    background-color: #667eea;
+    background: linear-gradient(135deg, #42b8dd 0%, #667eea 100%);
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
+}
+
+.gutter.gutter-horizontal:hover {
+    background: linear-gradient(90deg, transparent 20%, #42b8dd 40%, #667eea 60%, transparent 80%);
+}
+
+.gutter.gutter-vertical:hover {
+    background: linear-gradient(180deg, transparent 20%, #42b8dd 40%, #667eea 60%, transparent 80%);
 }
 
 /* Tab Navigation */
