@@ -59,9 +59,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     title: 'Terminal'
                 }, {
                     type: 'component',
-                    componentName: 'editor',
-                    componentState: { id: 'editor-main' },
-                    title: 'Editor'
+                    componentName: 'explorer',
+                    componentState: { id: 'explorer-main' },
+                    title: 'Explorer'
                 }]
             }]
         };
@@ -82,6 +82,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         goldenLayout.registerComponent('claude', function(container, componentState) {
             const id = componentState.id || 'claude-' + Date.now();
             initializeClaudeComponent(container, componentState, id);
+        });
+
+        goldenLayout.registerComponent('explorer', function(container, componentState) {
+            const id = componentState.id || 'explorer-' + Date.now();
+            initializeExplorerComponent(container, componentState, id);
         });
 
         goldenLayout.registerComponent('editor', function(container, componentState) {
@@ -143,6 +148,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (window.electronAPI && window.electronAPI.hideBrowserView) {
                         window.electronAPI.hideBrowserView();
                     }
+                    
+                    // Make sure all preview instances are marked as inactive
+                    Object.values(contentInstances.previews).forEach(preview => {
+                        if (preview) {
+                            preview.isActive = false;
+                        }
+                    });
                 }
 
                 // Handle terminal initialization when tab becomes active
@@ -558,7 +570,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    function initializeEditorComponent(container, componentState, componentId) {
+    function initializeExplorerComponent(container, componentState, componentId) {
         const element = container.getElement();
         
         // Set the container to use flex layout
@@ -620,6 +632,88 @@ document.addEventListener('DOMContentLoaded', async () => {
                     contentInstances.editors[componentId] = { editor, fileTree };
                     console.log('CodeMirror editor successfully initialized for', componentId);
                     console.log('Editor instance stored:', contentInstances.editors[componentId]);
+                    
+                    // Refresh the editor after a brief delay to ensure it's rendered properly
+                    setTimeout(() => {
+                        if (editor) {
+                            editor.refresh();
+                            editor.setSize(null, '100%');
+                            console.log('Editor refreshed and sized');
+                        }
+                    }, 100);
+                    
+                    // Also refresh when the tab becomes active
+                    setTimeout(() => {
+                        if (editor) {
+                            editor.refresh();
+                            editor.setSize(null, '100%');
+                        }
+                    }, 500);
+                } catch (error) {
+                    console.error('Failed to initialize CodeMirror:', error);
+                }
+            } else {
+                console.error('editorDiv not found for', componentId);
+            }
+        });
+        
+        // Force refresh when container resizes
+        function handleResize() {
+            setTimeout(() => {
+                if (editor) {
+                    editor.refresh();
+                    editor.setSize(null, '100%');
+                }
+            }, 10);
+        }
+        
+        container.on('resize', handleResize);
+
+        // Cleanup function
+        cleanupFunctions[componentId] = function() {
+            if (contentInstances.editors[componentId]) {
+                if (contentInstances.editors[componentId].editor) {
+                    // CodeMirror cleanup
+                    const cmElement = contentInstances.editors[componentId].editor.getWrapperElement();
+                    if (cmElement && cmElement.parentNode) {
+                        cmElement.parentNode.removeChild(cmElement);
+                    }
+                }
+                delete contentInstances.editors[componentId];
+            }
+            container.off('resize', handleResize);
+        };
+    }
+
+    function initializeEditorComponent(container, componentState, componentId) {
+        const element = container.getElement();
+        
+        element.html(`<div id="editor-${componentId}" class="editor-main" style="height: 100%; width: 100%;"></div>`);
+
+        const editorDiv = element.find(`#editor-${componentId}`)[0];
+        let editor = null;
+        
+        loadCodeMirror(() => {
+            console.log('Attempting to initialize CodeMirror for', componentId);
+            console.log('editorDiv exists:', !!editorDiv);
+            console.log('editorDiv offsetParent:', editorDiv?.offsetParent);
+            
+            if (editorDiv) {
+                try {
+                    editor = CodeMirror(editorDiv, {
+                        value: `;; Editor ${componentId}\n;; Start coding here!\n`,
+                        mode: 'clojure',
+                        theme: 'dracula',
+                        lineNumbers: true,
+                        autoCloseBrackets: true,
+                        matchBrackets: true,
+                        indentUnit: 2,
+                        tabSize: 2,
+                        viewportMargin: Infinity
+                    });
+                    
+                    contentInstances.editors[componentId] = { editor };
+                    console.log('CodeMirror editor successfully initialized for', componentId);
                     
                     // Refresh the editor after a brief delay to ensure it's rendered properly
                     setTimeout(() => {
@@ -814,55 +908,96 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function openFile(filePath, paneId) {
         console.log('openFile called:', filePath, paneId);
-        console.log('Available editors:', Object.keys(contentInstances.editors));
         
         try {
             const content = await window.electronAPI.readTextFile(filePath);
-            let editorInstance = contentInstances.editors[paneId];
             
-            // If the specific paneId doesn't exist, try to use any available editor
-            if (!editorInstance || !editorInstance.editor) {
-                console.warn('Specific editor not found, trying any available editor');
-                const availableEditors = Object.values(contentInstances.editors).filter(e => e && e.editor);
-                if (availableEditors.length > 0) {
-                    editorInstance = availableEditors[0];
-                    console.log('Using fallback editor');
-                }
+            // Check content size after reading
+            const maxSize = 1024 * 1024; // 1MB limit
+            const contentSize = new Blob([content]).size;
+            
+            if (contentSize > maxSize) {
+                const sizeInMB = (contentSize / (1024 * 1024)).toFixed(2);
+                alert(`File is too large to open (${sizeInMB}MB). Maximum size is 1MB.`);
+                return;
             }
+            const fileName = filePath.split('/').pop();
             
-            console.log('Editor instance found:', !!editorInstance);
-            console.log('Editor object:', !!editorInstance?.editor);
+            // Create a new editor tab
+            const editorId = 'editor-' + Date.now();
             
-            if (editorInstance && editorInstance.editor) {
-                editorInstance.editor.setValue(content);
-                
-                // Set mode based on file extension
-                const ext = filePath.split('.').pop().toLowerCase();
-                let mode = 'javascript';
-                switch(ext) {
-                    case 'js': mode = 'javascript'; break;
-                    case 'ts': mode = 'javascript'; break;
-                    case 'html': mode = 'xml'; break;
-                    case 'css': mode = 'css'; break;
-                    case 'json': mode = 'javascript'; break;
-                    case 'clj': case 'cljs': case 'cljc': case 'edn': mode = 'clojure'; break;
-                    default: mode = 'text';
+            const newItemConfig = {
+                type: 'component',
+                componentName: 'editor',
+                componentState: { 
+                    id: editorId,
+                    filePath: filePath,
+                    fileName: fileName 
+                },
+                title: fileName
+            };
+            
+            // Find any available stack to add the editor tab to
+            if (goldenLayout && goldenLayout.root) {
+                function findStack(item) {
+                    if (item.type === 'stack') {
+                        return item;
+                    }
+                    if (item.contentItems && item.contentItems.length > 0) {
+                        for (let child of item.contentItems) {
+                            const stack = findStack(child);
+                            if (stack) return stack;
+                        }
+                    }
+                    return null;
                 }
-                editorInstance.editor.setOption('mode', mode);
                 
-                // Force refresh and focus to make the content visible
-                setTimeout(() => {
-                    editorInstance.editor.refresh();
-                    editorInstance.editor.focus();
-                    editorInstance.editor.setSize(null, '100%');
-                }, 50);
+                const targetStack = findStack(goldenLayout.root);
                 
-                console.log(`Successfully opened file: ${filePath} with mode: ${mode}`);
-            } else {
-                console.error('No editor available to open file');
-                console.error('Requested paneId:', paneId);
-                console.error('Available editor instances:', contentInstances.editors);
-                alert('No editor available to open the file. Please make sure the Editor tab is loaded.');
+                if (targetStack) {
+                    targetStack.addChild(newItemConfig);
+                    
+                    // Wait for the component to be created and then set its content
+                    setTimeout(async () => {
+                        const editorInstance = contentInstances.editors[editorId];
+                        if (editorInstance && editorInstance.editor) {
+                            editorInstance.editor.setValue(content);
+                            
+                            // Set mode based on file extension
+                            const ext = filePath.split('.').pop().toLowerCase();
+                            let mode = 'javascript';
+                            switch(ext) {
+                                case 'js': mode = 'javascript'; break;
+                                case 'ts': mode = 'javascript'; break;
+                                case 'html': mode = 'xml'; break;
+                                case 'css': mode = 'css'; break;
+                                case 'json': mode = 'javascript'; break;
+                                case 'clj': case 'cljs': case 'cljc': case 'edn': mode = 'clojure'; break;
+                                default: mode = 'text';
+                            }
+                            editorInstance.editor.setOption('mode', mode);
+                            
+                            // Force refresh and focus
+                            setTimeout(() => {
+                                editorInstance.editor.refresh();
+                                editorInstance.editor.focus();
+                                editorInstance.editor.setSize(null, '100%');
+                            }, 50);
+                            
+                            console.log(`Successfully opened file: ${filePath} with mode: ${mode}`);
+                        }
+                    }, 200);
+                    
+                    // Switch to the new tab
+                    setTimeout(() => {
+                        if (targetStack.contentItems.length > 0) {
+                            const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
+                            targetStack.setActiveContentItem(newTab);
+                        }
+                    }, 100);
+                } else {
+                    console.error('No stack found to add editor tab to');
+                }
             }
         } catch (error) {
             console.error('Error opening file:', error);
@@ -914,6 +1049,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function initializeHeaderButtons() {
         const playBtn = document.getElementById('play-btn');
         const scriptBtn = document.getElementById('script-btn');
+        const newEditorBtn = document.getElementById('new-editor-btn');
         const devtoolsBtn = document.getElementById('devtools-btn');
         const refreshBtn = document.getElementById('refresh-btn');
         const projectPathBtn = document.getElementById('project-path-btn');
@@ -964,6 +1100,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             scriptBtn.addEventListener('click', (e) => {
                 console.log('Script button clicked - showing popup');
                 showScriptPopup(e.target, updateScriptButtonAppearance);
+            });
+        }
+
+        if (newEditorBtn) {
+            newEditorBtn.addEventListener('click', (e) => {
+                console.log('New Editor button clicked - creating new editor tab');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Force browser view to hide to prevent interference
+                console.log('Hiding browser view before creating new editor tab');
+                if (window.electronAPI && window.electronAPI.hideBrowserView) {
+                    window.electronAPI.hideBrowserView();
+                }
+                
+                // Small delay to ensure browser view is hidden
+                setTimeout(() => {
+                    createNewEditorTab();
+                }, 50);
             });
         }
 
@@ -1325,6 +1480,54 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.electronAPI.terminalWrite(data);
             }
         });
+    }
+
+    function createNewEditorTab() {
+        const editorId = 'editor-' + Date.now();
+        const editorCount = Object.keys(contentInstances.editors).length + 1;
+        
+        const newItemConfig = {
+            type: 'component',
+            componentName: 'editor',
+            componentState: { 
+                id: editorId
+            },
+            title: `Editor ${editorCount}`
+        };
+        
+        // Find any available stack to add the editor tab to
+        if (goldenLayout && goldenLayout.root) {
+            function findStack(item) {
+                if (item.type === 'stack') {
+                    return item;
+                }
+                if (item.contentItems && item.contentItems.length > 0) {
+                    for (let child of item.contentItems) {
+                        const stack = findStack(child);
+                        if (stack) return stack;
+                    }
+                }
+                return null;
+            }
+            
+            const targetStack = findStack(goldenLayout.root);
+            
+            if (targetStack) {
+                targetStack.addChild(newItemConfig);
+                
+                // Switch to the new tab
+                setTimeout(() => {
+                    if (targetStack.contentItems.length > 0) {
+                        const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
+                        targetStack.setActiveContentItem(newTab);
+                    }
+                }, 100);
+                
+                console.log('New editor tab created in stack:', targetStack);
+            } else {
+                console.error('No stack found to add editor tab to');
+            }
+        }
     }
 
     function initializeClaudeForActiveTab(componentId, claudeElement) {
