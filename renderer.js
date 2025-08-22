@@ -4,21 +4,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Initializing split panes...');
         
         try {
-            // Vertical split for left container (Explorer and Terminal)
-            const leftSplit = Split(['#top-left-panel', '#bottom-left-panel'], {
-                sizes: [50, 50],
-                minSize: [100, 100],
-                gutterSize: 5,
-                direction: 'vertical',
-                cursor: 'row-resize',
-                gutter: (index, direction) => {
-                    const gutter = document.createElement('div');
-                    gutter.className = `gutter gutter-${direction}`;
-                    return gutter;
-                }
-            });
-            
-            // Horizontal split between left container and right panel (Browser)
+            // Only horizontal split between left container and right panel (Browser)
             const mainSplit = Split(['#left-container', '#right-panel'], {
                 sizes: [50, 50],
                 minSize: [300, 400],
@@ -66,28 +52,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Handle tab switching
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    const tabPanes = document.querySelectorAll('.tab-pane');
-    
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            
-            // Find parent tab group
-            const tabGroup = button.closest('.panel');
-            const groupButtons = tabGroup.querySelectorAll('.tab-btn');
-            const groupPanes = tabGroup.querySelectorAll('.tab-pane');
-            
-            // Update button states
-            groupButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            
-            // Update pane visibility
-            groupPanes.forEach(pane => pane.classList.remove('active'));
-            const targetPane = tabGroup.querySelector(`#${targetTab}-tab`);
-            if (targetPane) targetPane.classList.add('active');
+    function initializeTabSwitching() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabPanes = document.querySelectorAll('.tab-pane');
+        
+        console.log('Found tab buttons:', tabButtons.length);
+        console.log('Found tab panes:', tabPanes.length);
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.getAttribute('data-tab');
+                console.log('Tab clicked:', targetTab);
+                
+                // Find parent tab group
+                const tabGroup = button.closest('.panel');
+                const groupButtons = tabGroup.querySelectorAll('.tab-btn');
+                const groupPanes = tabGroup.querySelectorAll('.tab-pane');
+                
+                console.log('Group buttons:', groupButtons.length);
+                console.log('Group panes:', groupPanes.length);
+                
+                // Update button states
+                groupButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update pane visibility
+                groupPanes.forEach(pane => {
+                    pane.classList.remove('active');
+                    console.log('Removed active from:', pane.id);
+                });
+                
+                const targetPane = tabGroup.querySelector(`#${targetTab}-tab`);
+                console.log('Target pane:', targetPane);
+                
+                if (targetPane) {
+                    targetPane.classList.add('active');
+                    console.log('Added active to:', targetPane.id);
+                } else {
+                    console.log('Target pane not found for:', targetTab);
+                }
+            });
         });
-    });
+    }
+    
+    // Initialize tab switching
+    initializeTabSwitching();
 
     // Browser controls
     const urlBar = document.getElementById('url-bar');
@@ -199,6 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialize Monaco Editor
     let monacoEditor = null;
+    let currentFilePath = null;
     
     function initializeMonacoEditor() {
         console.log('initializeMonacoEditor called');
@@ -270,6 +280,120 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     } else {
         console.log('Editor tab button not found');
+    }
+
+    // Add file click handlers
+    function addFileClickHandlers() {
+        const fileItems = document.querySelectorAll('.tree-item');
+        fileItems.forEach(item => {
+            item.addEventListener('click', async () => {
+                const fileName = item.textContent.trim();
+                
+                // Only handle actual files (not folders)
+                if (fileName.includes('.')) {
+                    // Map display names to actual file paths
+                    const fileMap = {
+                        '📄 main.js': './main.js',
+                        '📄 renderer.js': './renderer.js',
+                        '📄 style.css': './style.css',
+                        '📄 package.json': './package.json',
+                        '📄 index.html': './index.html'
+                    };
+                    
+                    const filePath = fileMap[fileName];
+                    if (filePath) {
+                        await loadFileInEditor(filePath, fileName);
+                    }
+                }
+            });
+        });
+    }
+
+    async function loadFileInEditor(filePath, displayName) {
+        try {
+            if (!monacoEditor) {
+                // Switch to editor tab first
+                const editorTabBtn = document.querySelector('[data-tab="editor"]');
+                if (editorTabBtn) {
+                    editorTabBtn.click();
+                    // Wait for editor to initialize
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+
+            if (window.electronAPI && window.electronAPI.readFile) {
+                const result = await window.electronAPI.readFile(filePath);
+                if (result.success && monacoEditor) {
+                    currentFilePath = filePath;
+                    
+                    // Determine language from file extension
+                    const language = getLanguageFromFile(filePath);
+                    
+                    // Set editor content and language
+                    monacoEditor.setValue(result.content);
+                    monaco.editor.setModelLanguage(monacoEditor.getModel(), language);
+                    
+                    // Update editor tab title
+                    updateEditorTabTitle(displayName);
+                    
+                    console.log(`Loaded ${filePath} in editor`);
+                } else {
+                    console.error('Failed to read file:', result.error);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading file:', error);
+        }
+    }
+
+    function getLanguageFromFile(filePath) {
+        const ext = filePath.split('.').pop().toLowerCase();
+        const languageMap = {
+            'js': 'javascript',
+            'css': 'css',
+            'html': 'html',
+            'json': 'json',
+            'md': 'markdown',
+            'txt': 'plaintext'
+        };
+        return languageMap[ext] || 'plaintext';
+    }
+
+    function updateEditorTabTitle(fileName) {
+        const editorTabBtn = document.querySelector('[data-tab="editor"]');
+        if (editorTabBtn) {
+            editorTabBtn.textContent = `Editor: ${fileName.replace('📄 ', '')}`;
+        }
+    }
+
+    // Initialize file click handlers
+    addFileClickHandlers();
+
+    // Add keyboard shortcut for saving (Ctrl/Cmd + S)
+    document.addEventListener('keydown', async (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's' && currentFilePath && monacoEditor) {
+            e.preventDefault();
+            await saveCurrentFile();
+        }
+    });
+
+    async function saveCurrentFile() {
+        if (!currentFilePath || !monacoEditor) return;
+        
+        try {
+            const content = monacoEditor.getValue();
+            if (window.electronAPI && window.electronAPI.writeFile) {
+                const result = await window.electronAPI.writeFile(currentFilePath, content);
+                if (result.success) {
+                    console.log(`Saved ${currentFilePath}`);
+                    // Could show a toast notification here
+                } else {
+                    console.error('Failed to save file:', result.error);
+                }
+            }
+        } catch (error) {
+            console.error('Error saving file:', error);
+        }
     }
 
     console.log('Application initialized');

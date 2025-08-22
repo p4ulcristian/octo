@@ -22,5 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('browser-navigated', (event, url) => callback(url));
   },
   panelResized: (panelType, sizes) => ipcRenderer.send('panel-resized', panelType, sizes),
-  sendBrowserMountBounds: (bounds) => ipcRenderer.send('browser-mount-bounds', bounds)
+  sendBrowserMountBounds: (bounds) => ipcRenderer.send('browser-mount-bounds', bounds),
+  readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
+  writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content)
 });

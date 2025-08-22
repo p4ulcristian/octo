@@ -20,14 +20,15 @@
         <main class="main-container" id="main-container">
             <!-- Left Side Container -->
             <div id="left-container" class="left-container">
-                <!-- Top Left Panel -->
-                <div id="top-left-panel" class="panel">
+                <!-- Main Left Panel -->
+                <div id="main-left-panel" class="panel">
                     <h2 class="panel-title">📁 Explorer</h2>
                     <div class="tab-navigation">
                         <button class="tab-btn active" data-tab="files">Files</button>
                         <button class="tab-btn" data-tab="search">Search</button>
                         <button class="tab-btn" data-tab="git">Git</button>
                         <button class="tab-btn" data-tab="editor">Editor</button>
+                        <button class="tab-btn" data-tab="terminal">Terminal</button>
                     </div>
                     <div class="panel-content">
                         <div id="files-tab" class="tab-pane active">
@@ -54,29 +55,27 @@
                         <div id="editor-tab" class="tab-pane">
                             <div id="monaco-editor" class="monaco-editor-container"></div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Bottom Left Panel -->
-                <div id="bottom-left-panel" class="panel">
-                    <h2 class="panel-title">💻 Terminal</h2>
-                    <div class="terminal-container">
-                        <div class="terminal-tabs">
-                            <button class="terminal-tab active">Terminal 1</button>
-                            <button class="terminal-tab">Terminal 2</button>
-                            <button class="terminal-tab">+ New</button>
-                        </div>
-                        <div class="terminal-content">
-                            <div class="terminal-line">$ npm run dev</div>
-                            <div class="terminal-line success">✓ Electron app started</div>
-                            <div class="terminal-line">Listening on port 3000...</div>
-                            <div class="terminal-input-line">
-                                <span class="prompt">$</span>
-                                <input type="text" class="terminal-input" placeholder="Enter command...">
+                        <div id="terminal-tab" class="tab-pane">
+                            <div class="terminal-container">
+                                <div class="terminal-tabs">
+                                    <button class="terminal-tab active">Terminal 1</button>
+                                    <button class="terminal-tab">Terminal 2</button>
+                                    <button class="terminal-tab">+ New</button>
+                                </div>
+                                <div class="terminal-content">
+                                    <div class="terminal-line">$ npm run dev</div>
+                                    <div class="terminal-line success">✓ Electron app started</div>
+                                    <div class="terminal-line">Listening on port 3000...</div>
+                                    <div class="terminal-input-line">
+                                        <span class="prompt">$</span>
+                                        <input type="text" class="terminal-input" placeholder="Enter command...">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
 
             <!-- Right Panel - Browser -->

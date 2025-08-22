@@ -1,4 +1,5 @@
 const { app, BrowserWindow, BrowserView, Menu, ipcMain, dialog } = require('electron');
+const fs = require('fs').promises;
 const path = require('path');
 
 if (process.env.NODE_ENV === 'development') {
@@ -241,4 +242,24 @@ ipcMain.handle('show-message', async (event, title, message) => {
 
 ipcMain.handle('app-version', () => {
   return app.getVersion();
+});
+
+ipcMain.handle('read-file', async (event, filePath) => {
+  try {
+    const content = await fs.readFile(filePath, 'utf8');
+    return { success: true, content };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+
+//HHello
+ipcMain.handle('write-file', async (event, filePath, content) => {
+  try {
+    await fs.writeFile(filePath, content, 'utf8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });

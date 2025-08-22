@@ -132,10 +132,17 @@ header h1 {
 
 .tab-pane {
     display: none;
+    flex: 1;
 }
 
 .tab-pane.active {
     display: block;
+}
+
+/* Special case for terminal tab to use flex layout */
+#terminal-tab.active {
+    display: flex;
+    flex-direction: column;
 }
 
 /* File Tree */
@@ -191,13 +198,16 @@ header h1 {
 
 #editor-tab {
     flex: 1;
-    display: flex;
     flex-direction: column;
     padding: 0;
 }
 
 #editor-tab.active {
     display: flex;
+}
+
+#editor-tab:not(.active) {
+    display: none;
 }
 
 /* Terminal Styles */
