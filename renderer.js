@@ -463,6 +463,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    function selectPane(paneId, contentType = null) {
+        // Remove selection from all panes
+        const allPanes = document.querySelectorAll('#editor-top-pane, #claude-pane, #editor-bottom-pane, #terminal-pane');
+        allPanes.forEach(pane => pane.classList.remove('selected'));
+        
+        // Select the clicked pane
+        const targetPane = document.getElementById(paneId);
+        if (targetPane) {
+            targetPane.classList.add('selected');
+            
+            // Update top bar with current content or default
+            const displayType = contentType || getActiveContentType(paneId) || 'Empty';
+            updateTopBar(paneId, displayType);
+        }
+    }
+    
+    function getActiveContentType(paneId) {
+        // Check what content is currently in the pane
+        if (contentInstances.terminals[paneId]) return 'terminal';
+        if (contentInstances.claudeTerminals[paneId]) return 'claude';
+        if (contentInstances.editors[paneId]) return 'editor';
+        if (contentInstances.previews[paneId]) return 'preview';
+        return null;
+    }
+    
+    function initializePaneClickHandlers() {
+        const panes = document.querySelectorAll('#editor-top-pane, #claude-pane, #editor-bottom-pane, #terminal-pane');
+        
+        panes.forEach(pane => {
+            pane.addEventListener('click', (e) => {
+                // Don't select if clicking on a circle button
+                if (e.target.closest('.circle')) return;
+                
+                selectPane(pane.id);
+            });
+        });
+    }
+    
     // Initialize circle button functionality
     function initializeCircleButtons() {
         const circles = document.querySelectorAll('.circle');
@@ -475,8 +513,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 console.log(`Selected ${contentType} for pane ${paneId}`);
                 
-                // Update top bar
-                updateTopBar(paneId, contentType);
+                // Select the pane and update top bar
+                selectPane(paneId, contentType);
                 
                 // Clear the pane
                 pane.innerHTML = '';
@@ -775,8 +813,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // Initialize circle buttons
-    setTimeout(initializeCircleButtons, 200);
+    // Initialize circle buttons and pane click handlers
+    setTimeout(() => {
+        initializeCircleButtons();
+        initializePaneClickHandlers();
+    }, 200);
 
     console.log('Application initialized');
 });

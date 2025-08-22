@@ -25,9 +25,15 @@ body {
     height: 35px;
     display: flex;
     align-items: center;
-    color: #cccccc;
-    font-size: 13px;
-    font-weight: 500;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+#active-pane-name {
+    color: #67ea94;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 header {
@@ -80,6 +86,18 @@ header h1 {
     display: flex;
     justify-content: center;
     align-items: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+#editor-top-pane:hover, #editor-bottom-pane:hover {
+    border-color: #0e639c;
+}
+
+#editor-top-pane.selected, #editor-bottom-pane.selected {
+    border-color: #67ea94;
+    border-width: 2px;
+    box-shadow: 0 0 8px rgba(103, 234, 148, 0.3);
 }
 
 #terminal-claude-pane {
@@ -94,6 +112,18 @@ header h1 {
     display: flex;
     justify-content: center;
     align-items: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+#claude-pane:hover, #terminal-pane:hover {
+    border-color: #0e639c;
+}
+
+#claude-pane.selected, #terminal-pane.selected {
+    border-color: #67ea94;
+    border-width: 2px;
+    box-shadow: 0 0 8px rgba(103, 234, 148, 0.3);
 }
 
 
