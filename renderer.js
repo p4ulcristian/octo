@@ -422,14 +422,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Start the terminal process
                 if (window.electronAPI && window.electronAPI.terminalStart) {
-                    window.electronAPI.terminalStart().then(() => {
+                    window.electronAPI.terminalStart(componentId).then(() => {
                         console.log('Terminal process started for', componentId);
                         
                         // Change to project directory if set
                         const projectPath = localStorage.getItem('octo-project-path');
                         if (projectPath && projectPath.trim()) {
                             console.log('Changing terminal directory to:', projectPath);
-                            window.electronAPI.terminalWrite(`cd "${projectPath}"\n`);
+                            window.electronAPI.terminalWrite(componentId, `cd "${projectPath}"\n`);
                         }
                     }).catch(error => {
                         console.error('Failed to start terminal:', error);
@@ -439,8 +439,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                     
                     // Listen for output
-                    window.electronAPI.onTerminalOutput((data) => {
-                        if (isTerminalReady && terminal) {
+                    window.electronAPI.onTerminalOutput((terminalId, data) => {
+                        // Only process output for this specific terminal
+                        if (terminalId === componentId && isTerminalReady && terminal) {
                             terminal.write(data);
                         }
                     });
@@ -448,14 +449,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Send input
                     terminal.onData(data => {
                         if (window.electronAPI && window.electronAPI.terminalWrite) {
-                            window.electronAPI.terminalWrite(data);
+                            window.electronAPI.terminalWrite(componentId, data);
                         }
                     });
                     
                     // Handle resize
                     terminal.onResize(({ cols, rows }) => {
                         if (window.electronAPI && window.electronAPI.terminalResize) {
-                            window.electronAPI.terminalResize(cols, rows);
+                            window.electronAPI.terminalResize(componentId, cols, rows);
                         }
                     });
                 }
@@ -479,6 +480,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (contentInstances.terminals[componentId]) {
                 contentInstances.terminals[componentId].dispose();
                 delete contentInstances.terminals[componentId];
+            }
+            // Stop the terminal process
+            if (window.electronAPI && window.electronAPI.terminalStop) {
+                window.electronAPI.terminalStop(componentId);
             }
             container.off('resize', handleResize);
         };
@@ -1839,6 +1844,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function createNewTerminalTab() {
+        const terminalId = 'terminal-' + Date.now();
+        
+        const newItemConfig = {
+            type: 'component',
+            componentName: 'terminal',
+            componentState: { 
+                id: terminalId
+            },
+            title: 'Terminal'
+        };
+        
+        // Find any available stack to add the terminal tab to
+        if (goldenLayout && goldenLayout.root) {
+            function findStack(item) {
+                if (item.type === 'stack') {
+                    return item;
+                }
+                if (item.contentItems && item.contentItems.length > 0) {
+                    for (let child of item.contentItems) {
+                        const stack = findStack(child);
+                        if (stack) return stack;
+                    }
+                }
+                return null;
+            }
+            
+            const targetStack = findStack(goldenLayout.root);
+            
+            if (targetStack) {
+                targetStack.addChild(newItemConfig);
+                
+                // Switch to the new tab
+                setTimeout(() => {
+                    if (targetStack.contentItems.length > 0) {
+                        const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
+                        targetStack.setActiveContentItem(newTab);
+                    }
+                }, 100);
+                
+                console.log('New terminal tab created');
+            } else {
+                console.error('No stack found to add terminal tab to');
+            }
+        }
+    }
+
     function createNewGitTab() {
         const gitId = 'git-' + Date.now();
         
@@ -2113,17 +2165,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (terminalBtn) {
             terminalBtn.addEventListener('click', () => {
-                if (switchToTab('terminal')) {
-                    updateActiveTabButton('terminal');
-                }
+                // Always create new terminal
+                createNewTerminalTab();
+                updateActiveTabButton('terminal');
             });
         }
         
         if (claudeBtn) {
             claudeBtn.addEventListener('click', () => {
-                if (switchToTab('claude')) {
-                    updateActiveTabButton('claude');
-                }
+                // Just create a regular terminal tab
+                createNewTerminalTab();
+                updateActiveTabButton('claude');
             });
         }
         

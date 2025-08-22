@@ -15,6 +15,7 @@ let browserView;
 let browserMountBounds = null;
 let ptyProcess = null;
 let claudePtyProcess = null;
+let terminalProcesses = new Map(); // Store multiple terminal processes
 
 function createWindow() {
   let iconPath = null;
@@ -343,16 +344,21 @@ ipcMain.handle('write-file', async (event, filePath, content) => {
 });
 
 // Terminal handlers using node-pty (real TTY)
-ipcMain.handle('terminal-start', async (event) => {
+ipcMain.handle('terminal-start', async (event, terminalId) => {
   try {
-    if (ptyProcess) {
-      ptyProcess.kill();
+    console.log('Starting terminal for ID:', terminalId);
+    
+    // Clean up existing process for this terminal if it exists
+    if (terminalProcesses.has(terminalId)) {
+      const existingProcess = terminalProcesses.get(terminalId);
+      existingProcess.kill();
+      terminalProcesses.delete(terminalId);
     }
     
     // Start PTY process with real shell
     const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/zsh');
     
-    ptyProcess = pty.spawn(shell, [], {
+    const terminalProcess = pty.spawn(shell, [], {
       name: 'xterm-color',
       cols: 80,
       rows: 24,
@@ -360,14 +366,17 @@ ipcMain.handle('terminal-start', async (event) => {
       env: process.env
     });
     
-    // Send output to renderer
-    ptyProcess.onData((data) => {
-      mainWindow.webContents.send('terminal-output', data);
+    // Store the process
+    terminalProcesses.set(terminalId, terminalProcess);
+    
+    // Send output to renderer with terminal ID
+    terminalProcess.onData((data) => {
+      mainWindow.webContents.send('terminal-output', terminalId, data);
     });
     
-    ptyProcess.onExit((exitCode) => {
-      mainWindow.webContents.send('terminal-output', `\r\nTerminal session ended (code ${exitCode.exitCode})\r\n`);
-      ptyProcess = null;
+    terminalProcess.onExit((exitCode) => {
+      mainWindow.webContents.send('terminal-output', terminalId, `\r\nTerminal session ended (code ${exitCode.exitCode})\r\n`);
+      terminalProcesses.delete(terminalId);
     });
     
     return { success: true };
@@ -376,35 +385,38 @@ ipcMain.handle('terminal-start', async (event) => {
   }
 });
 
-ipcMain.handle('terminal-write', async (event, data) => {
+ipcMain.handle('terminal-write', async (event, terminalId, data) => {
   try {
-    if (ptyProcess) {
-      ptyProcess.write(data);
+    const terminalProcess = terminalProcesses.get(terminalId);
+    if (terminalProcess) {
+      terminalProcess.write(data);
       return { success: true };
     }
-    return { success: false, error: 'Terminal not running' };
+    return { success: false, error: `Terminal ${terminalId} not running` };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('terminal-resize', async (event, cols, rows) => {
+ipcMain.handle('terminal-resize', async (event, terminalId, cols, rows) => {
   try {
-    if (ptyProcess) {
-      ptyProcess.resize(cols, rows);
+    const terminalProcess = terminalProcesses.get(terminalId);
+    if (terminalProcess) {
+      terminalProcess.resize(cols, rows);
       return { success: true };
     }
-    return { success: false, error: 'Terminal not running' };
+    return { success: false, error: `Terminal ${terminalId} not running` };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('terminal-stop', async (event) => {
+ipcMain.handle('terminal-stop', async (event, terminalId) => {
   try {
-    if (ptyProcess) {
-      ptyProcess.kill();
-      ptyProcess = null;
+    const terminalProcess = terminalProcesses.get(terminalId);
+    if (terminalProcess) {
+      terminalProcess.kill();
+      terminalProcesses.delete(terminalId);
     }
     return { success: true };
   } catch (error) {

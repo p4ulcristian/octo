@@ -33,12 +33,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
   
   // Terminal functions
-  terminalStart: () => ipcRenderer.invoke('terminal-start'),
-  terminalWrite: (data) => ipcRenderer.invoke('terminal-write', data),
-  terminalStop: () => ipcRenderer.invoke('terminal-stop'),
-  terminalResize: (cols, rows) => ipcRenderer.invoke('terminal-resize', cols, rows),
+  terminalStart: (terminalId) => ipcRenderer.invoke('terminal-start', terminalId),
+  terminalWrite: (terminalId, data) => ipcRenderer.invoke('terminal-write', terminalId, data),
+  terminalStop: (terminalId) => ipcRenderer.invoke('terminal-stop', terminalId),
+  terminalResize: (terminalId, cols, rows) => ipcRenderer.invoke('terminal-resize', terminalId, cols, rows),
   onTerminalOutput: (callback) => {
-    ipcRenderer.on('terminal-output', (event, data) => callback(data));
+    ipcRenderer.on('terminal-output', (event, terminalId, data) => callback(terminalId, data));
   },
   
   // Claude terminal functions
