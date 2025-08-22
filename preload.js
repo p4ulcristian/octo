@@ -38,7 +38,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   terminalStop: (terminalId) => ipcRenderer.invoke('terminal-stop', terminalId),
   terminalResize: (terminalId, cols, rows) => ipcRenderer.invoke('terminal-resize', terminalId, cols, rows),
   onTerminalOutput: (callback) => {
-    ipcRenderer.on('terminal-output', (event, terminalId, data) => callback(terminalId, data));
+    const handler = (event, terminalId, data) => callback(terminalId, data);
+    ipcRenderer.on('terminal-output', handler);
+    // Return a function to remove the listener
+    return () => ipcRenderer.removeListener('terminal-output', handler);
   },
   
   // Claude terminal functions

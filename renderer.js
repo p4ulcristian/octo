@@ -41,62 +41,110 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
             content: [{
                 type: 'stack',
-                activeItemIndex: 1,
-                content: [{
-                    type: 'component',
-                    componentName: 'preview',
-                    componentState: { id: 'preview-main' },
-                    title: 'Browser'
-                }, {
-                    type: 'component',
-                    componentName: 'claude',
-                    componentState: { id: 'claude-main' },
-                    title: 'Claude'
-                }, {
-                    type: 'component',
-                    componentName: 'terminal',
-                    componentState: { id: 'terminal-main' },
-                    title: 'Terminal'
-                }, {
-                    type: 'component',
-                    componentName: 'explorer',
-                    componentState: { id: 'explorer-main' },
-                    title: 'Explorer'
-                }]
+                content: []  // Start with empty tabs - users can create their own
             }]
         };
 
+        // Try to load saved layout from localStorage
+        const savedLayout = localStorage.getItem('octo-layout');
+        if (savedLayout) {
+            try {
+                const parsedLayout = JSON.parse(savedLayout);
+                console.log('Loading saved layout from localStorage');
+                
+                // Fix activeItemIndex to prevent out of bounds errors
+                function fixActiveItemIndex(item) {
+                    if (item.type === 'stack') {
+                        const contentLength = item.content ? item.content.length : 0;
+                        
+                        // If stack is empty, remove activeItemIndex
+                        if (contentLength === 0) {
+                            delete item.activeItemIndex;
+                            console.log('Removed activeItemIndex from empty stack');
+                        }
+                        // If activeItemIndex is out of bounds, fix it
+                        else if (item.activeItemIndex !== undefined && item.activeItemIndex >= contentLength) {
+                            const newIndex = contentLength - 1;
+                            console.log(`Fixing activeItemIndex: ${item.activeItemIndex} -> ${newIndex}`);
+                            item.activeItemIndex = newIndex;
+                        }
+                    }
+                    
+                    // Recursively fix nested items
+                    if (item.content && Array.isArray(item.content)) {
+                        item.content.forEach(fixActiveItemIndex);
+                    }
+                }
+                
+                // Fix the layout before using it
+                if (parsedLayout.content) {
+                    parsedLayout.content.forEach(fixActiveItemIndex);
+                }
+                
+                config.content = parsedLayout.content;
+            } catch (error) {
+                console.error('Failed to parse saved layout:', error);
+                localStorage.removeItem('octo-layout'); // Remove corrupted layout
+            }
+        }
+
         goldenLayout = new GoldenLayout(config, $('#golden-layout-container'));
+
+        // Save layout to localStorage whenever it changes
+        goldenLayout.on('stateChanged', function() {
+            try {
+                const state = goldenLayout.toConfig();
+                localStorage.setItem('octo-layout', JSON.stringify(state));
+                console.log('Layout saved to localStorage');
+            } catch (error) {
+                console.error('Failed to save layout:', error);
+            }
+        });
 
         // Register components with proper cleanup
         goldenLayout.registerComponent('preview', function(container, componentState) {
-            const id = componentState.id || 'preview-' + Date.now();
-            initializePreviewComponent(container, componentState, id);
+            if (!componentState.id) {
+                componentState.id = 'preview-' + Date.now();
+            }
+            initializePreviewComponent(container, componentState, componentState.id);
         });
 
         goldenLayout.registerComponent('terminal', function(container, componentState) {
-            const id = componentState.id || 'terminal-' + Date.now();
+            // IMPORTANT: Use the saved ID if it exists, otherwise create a new one
+            if (!componentState.id) {
+                componentState.id = 'terminal-' + Date.now();
+            }
+            const id = componentState.id;
+            // Preserve the runClaudeCommand flag if it exists
             initializeTerminalComponent(container, componentState, id);
         });
 
         goldenLayout.registerComponent('claude', function(container, componentState) {
-            const id = componentState.id || 'claude-' + Date.now();
-            initializeClaudeComponent(container, componentState, id);
+            if (!componentState.id) {
+                componentState.id = 'claude-' + Date.now();
+            }
+            initializeClaudeComponent(container, componentState, componentState.id);
         });
 
         goldenLayout.registerComponent('explorer', function(container, componentState) {
-            const id = componentState.id || 'explorer-' + Date.now();
-            initializeExplorerComponent(container, componentState, id);
+            if (!componentState.id) {
+                componentState.id = 'explorer-' + Date.now();
+            }
+            initializeExplorerComponent(container, componentState, componentState.id);
         });
 
         goldenLayout.registerComponent('editor', function(container, componentState) {
-            const id = componentState.id || 'editor-' + Date.now();
-            initializeEditorComponent(container, componentState, id);
+            if (!componentState.id) {
+                componentState.id = 'editor-' + Date.now();
+            }
+            initializeEditorComponent(container, componentState, componentState.id);
         });
 
         goldenLayout.registerComponent('git', function(container, componentState) {
-            const id = componentState.id || 'git-' + Date.now();
-            initializeGitComponent(container, componentState, id);
+            if (!componentState.id) {
+                componentState.id = 'git-' + Date.now();
+            }
+            initializeGitComponent(container, componentState, componentState.id);
         });
 
         // Handle component destruction
@@ -162,27 +210,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
 
-                // Handle terminal initialization when tab becomes active
-                if (componentName === 'terminal' && !contentInstances.terminals[componentId]) {
-                    setTimeout(() => {
-                        const terminalElement = document.getElementById(`terminal-${componentId}`);
-                        if (terminalElement && terminalElement.offsetParent !== null) {
-                            console.log('Reinitializing terminal for active tab:', componentId);
-                            initializeTerminalForActiveTab(componentId, terminalElement);
-                        }
-                    }, 100);
-                }
+                // Terminal initialization is now handled in initializeTerminalComponent
+                // No need for reinitializing when tab becomes active
 
-                // Handle Claude terminal initialization when tab becomes active
-                if (componentName === 'claude' && !contentInstances.claudeTerminals[componentId]) {
-                    setTimeout(() => {
-                        const claudeElement = document.getElementById(`claude-${componentId}`);
-                        if (claudeElement && claudeElement.offsetParent !== null) {
-                            console.log('Reinitializing Claude terminal for active tab:', componentId);
-                            initializeClaudeForActiveTab(componentId, claudeElement);
-                        }
-                    }, 100);
-                }
+                // Claude initialization is now handled in initializeClaudeComponent
+                // No need for reinitializing when tab becomes active
             });
         });
 
@@ -394,6 +426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function initializeTerminalComponent(container, componentState, componentId) {
+        console.log(`🚀 Initializing terminal component: ${componentId}`, componentState);
         const element = container.getElement();
         
         element.html(`<div id="terminal-${componentId}" style="height: 100%; width: 100%;"></div>`);
@@ -413,24 +446,59 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         let isTerminalReady = false;
         
+        // Add random delay for restored terminals to prevent race conditions
+        const delay = componentId.includes('-') ? Math.random() * 200 + 100 : 100;
         setTimeout(() => {
+            console.log(`🔍 Terminal ${componentId} div check:`, {
+                exists: !!terminalDiv,
+                visible: terminalDiv?.offsetParent !== null,
+                parent: terminalDiv?.offsetParent
+            });
             if (terminalDiv && terminalDiv.offsetParent !== null) {
                 terminal.open(terminalDiv);
                 isTerminalReady = true;
+                console.log(`✅ Terminal ${componentId} opened and ready`);
                 
                 contentInstances.terminals[componentId] = terminal;
                 
                 // Start the terminal process
+                console.log(`📡 Starting terminal process for: ${componentId}`);
                 if (window.electronAPI && window.electronAPI.terminalStart) {
                     window.electronAPI.terminalStart(componentId).then(() => {
-                        console.log('Terminal process started for', componentId);
+                        console.log(`✅ Terminal process started successfully for: ${componentId}`);
                         
-                        // Change to project directory if set
-                        const projectPath = localStorage.getItem('octo-project-path');
-                        if (projectPath && projectPath.trim()) {
-                            console.log('Changing terminal directory to:', projectPath);
-                            window.electronAPI.terminalWrite(componentId, `cd "${projectPath}"\n`);
-                        }
+                        // Now that the process is started, set up the output listener
+                        console.log(`👂 Setting up output listener for terminal: ${componentId}`);
+                        const removeOutputListener = window.electronAPI.onTerminalOutput((terminalId, data) => {
+                            console.log(`📥 Output received for terminal ${terminalId}, current terminal: ${componentId}, ready: ${isTerminalReady}`);
+                            // Only process output for this specific terminal
+                            if (terminalId === componentId && isTerminalReady && terminal) {
+                                console.log(`✍️ Writing output to terminal ${componentId}:`, data);
+                                terminal.write(data);
+                            }
+                        });
+                        
+                        // Store the remove function for cleanup
+                        terminal._removeOutputListener = removeOutputListener;
+                        
+                        // Small delay to ensure TTY connection is fully established
+                        setTimeout(() => {
+                            // Change to project directory if set
+                            const projectPath = localStorage.getItem('octo-project-path');
+                            if (projectPath && projectPath.trim()) {
+                                console.log('Changing terminal directory to:', projectPath);
+                                window.electronAPI.terminalWrite(componentId, `cd "${projectPath}"\n`);
+                            }
+                            
+                            // Run Claude command if this is a Claude terminal
+                            if (componentState.runClaudeCommand) {
+                                console.log('Running Claude command for terminal:', componentId);
+                                setTimeout(() => {
+                                    window.electronAPI.terminalWrite(componentId, 'claude --dangerously-skip-permissions\n');
+                                }, 500); // Small delay to ensure terminal is ready
+                            }
+                        }, 100); // Wait for TTY connection to stabilize
+                        
                     }).catch(error => {
                         console.error('Failed to start terminal:', error);
                         if (isTerminalReady) {
@@ -438,18 +506,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                     });
                     
-                    // Listen for output
-                    window.electronAPI.onTerminalOutput((terminalId, data) => {
-                        // Only process output for this specific terminal
-                        if (terminalId === componentId && isTerminalReady && terminal) {
-                            terminal.write(data);
-                        }
-                    });
-                    
                     // Send input
                     terminal.onData(data => {
+                        console.log(`🔤 Terminal ${componentId} input:`, data);
                         if (window.electronAPI && window.electronAPI.terminalWrite) {
-                            window.electronAPI.terminalWrite(componentId, data);
+                            window.electronAPI.terminalWrite(componentId, data).then(result => {
+                                console.log(`📨 Terminal ${componentId} write result:`, result);
+                                
+                                // If terminal is not running, try to restart it
+                                if (!result.success && result.error && result.error.includes('not running')) {
+                                    console.log(`🔄 Restarting dead terminal: ${componentId}`);
+                                    terminal.write('\r\n🔄 Terminal disconnected, restarting...\r\n');
+                                    
+                                    // Restart the terminal process
+                                    window.electronAPI.terminalStart(componentId).then(() => {
+                                        console.log(`✅ Terminal ${componentId} restarted successfully`);
+                                        terminal.write('✅ Terminal restarted successfully\r\n');
+                                        
+                                        // Re-send the input that failed
+                                        window.electronAPI.terminalWrite(componentId, data);
+                                    }).catch(error => {
+                                        console.error(`❌ Failed to restart terminal ${componentId}:`, error);
+                                        terminal.write('❌ Failed to restart terminal\r\n');
+                                    });
+                                }
+                            }).catch(error => {
+                                console.error(`❌ Terminal ${componentId} write error:`, error);
+                            });
+                        } else {
+                            console.error(`❌ Terminal ${componentId} - terminalWrite not available`);
                         }
                     });
                     
@@ -477,8 +562,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Cleanup function
         cleanupFunctions[componentId] = function() {
             isTerminalReady = false;
-            if (contentInstances.terminals[componentId]) {
-                contentInstances.terminals[componentId].dispose();
+            const term = contentInstances.terminals[componentId];
+            if (term) {
+                // Remove the output listener if it exists
+                if (term._removeOutputListener) {
+                    term._removeOutputListener();
+                }
+                term.dispose();
                 delete contentInstances.terminals[componentId];
             }
             // Stop the terminal process
@@ -1891,6 +1981,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function createClaudeTerminalTab() {
+        const terminalId = 'claude-terminal-' + Date.now();
+        
+        const newItemConfig = {
+            type: 'component',
+            componentName: 'terminal',
+            componentState: { 
+                id: terminalId,
+                runClaudeCommand: true  // Flag to run claude command after terminal starts
+            },
+            title: 'Claude Terminal'
+        };
+        
+        // Find any available stack to add the terminal tab to
+        if (goldenLayout && goldenLayout.root) {
+            function findStack(item) {
+                if (item.type === 'stack') {
+                    return item;
+                }
+                if (item.contentItems && item.contentItems.length > 0) {
+                    for (let child of item.contentItems) {
+                        const stack = findStack(child);
+                        if (stack) return stack;
+                    }
+                }
+                return null;
+            }
+            
+            const targetStack = findStack(goldenLayout.root);
+            
+            if (targetStack) {
+                targetStack.addChild(newItemConfig);
+                
+                // Switch to the new tab
+                setTimeout(() => {
+                    if (targetStack.contentItems.length > 0) {
+                        const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
+                        targetStack.setActiveContentItem(newTab);
+                    }
+                }, 100);
+                
+                console.log('New Claude terminal tab created');
+            } else {
+                console.error('No stack found to add Claude terminal tab to');
+            }
+        }
+    }
+
     function createNewGitTab() {
         const gitId = 'git-' + Date.now();
         
@@ -2090,6 +2228,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             saveActiveFile();
         }
+        
+        // Cmd/Ctrl + Shift + R to reset saved layout
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
+            e.preventDefault();
+            if (confirm('Reset saved layout? This will clear all tabs and restart fresh.')) {
+                localStorage.removeItem('octo-layout');
+                window.location.reload();
+            }
+        }
     });
 
     // Initialize tab navigation
@@ -2173,8 +2320,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (claudeBtn) {
             claudeBtn.addEventListener('click', () => {
-                // Just create a regular terminal tab
-                createNewTerminalTab();
+                // Create a terminal tab that runs claude
+                createClaudeTerminalTab();
                 updateActiveTabButton('claude');
             });
         }
