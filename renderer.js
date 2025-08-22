@@ -837,7 +837,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (devtoolsBtn) {
             devtoolsBtn.addEventListener('click', () => {
-                console.log('DevTools button clicked - TODO: implement DevTools functionality');
+                console.log('DevTools button clicked - toggling DevTools');
+                if (window.electronAPI && window.electronAPI.browserDevTools) {
+                    window.electronAPI.browserDevTools();
+                } else {
+                    console.log('DevTools API not available');
+                }
             });
         }
     }
