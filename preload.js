@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   terminalStart: () => ipcRenderer.invoke('terminal-start'),
   terminalWrite: (data) => ipcRenderer.invoke('terminal-write', data),
   terminalStop: () => ipcRenderer.invoke('terminal-stop'),
+  terminalResize: (cols, rows) => ipcRenderer.invoke('terminal-resize', cols, rows),
   onTerminalOutput: (callback) => {
     ipcRenderer.on('terminal-output', (event, data) => callback(data));
   }

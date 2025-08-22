@@ -250,23 +250,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 terminal.write(data);
             });
             
-            // Send input to the terminal process with local echo
+            // Send input directly to PTY (no local echo needed)
             terminal.onData(data => {
-                // Show what you're typing (local echo)
-                if (data === '\r') { // Enter key
-                    terminal.write('\r\n');
-                } else if (data === '\u007f') { // Backspace
-                    terminal.write('\b \b');
-                } else if (data >= ' ') { // Printable characters
-                    terminal.write(data);
-                }
-                
                 if (window.electronAPI && window.electronAPI.terminalWrite) {
                     window.electronAPI.terminalWrite(data);
                 }
             });
             
-            
+            // Handle terminal resize
+            terminal.onResize(({ cols, rows }) => {
+                if (window.electronAPI && window.electronAPI.terminalResize) {
+                    window.electronAPI.terminalResize(cols, rows);
+                }
+            });
         } else {
             // Fallback to echo mode if no terminal API
             terminal.write('Terminal API not available - echo mode\r\n$ ');

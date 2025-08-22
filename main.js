@@ -1,7 +1,7 @@
 const { app, BrowserWindow, BrowserView, Menu, ipcMain, dialog } = require('electron');
 const fs = require('fs').promises;
 const path = require('path');
-const { spawn } = require('child_process');
+const pty = require('node-pty');
 
 if (process.env.NODE_ENV === 'development') {
   require('electron-reload')(__dirname, {
@@ -13,7 +13,7 @@ if (process.env.NODE_ENV === 'development') {
 let mainWindow;
 let browserView;
 let browserMountBounds = null;
-let terminalProcess = null;
+let ptyProcess = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -266,48 +266,32 @@ ipcMain.handle('write-file', async (event, filePath, content) => {
   }
 });
 
-// Terminal handlers using child_process
+// Terminal handlers using node-pty (real TTY)
 ipcMain.handle('terminal-start', async (event) => {
   try {
-    if (terminalProcess) {
-      terminalProcess.kill();
+    if (ptyProcess) {
+      ptyProcess.kill();
     }
     
-    // Start shell process with better configuration
-    const shell = process.platform === 'win32' ? 'cmd' : '/bin/bash';
-    const args = process.platform === 'win32' ? [] : ['-i']; // Interactive mode for bash
+    // Start PTY process with real shell
+    const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/zsh');
     
-    terminalProcess = spawn(shell, args, {
-      cwd: __dirname,
-      env: { ...process.env, TERM: 'xterm-256color' },
-      stdio: ['pipe', 'pipe', 'pipe']
+    ptyProcess = pty.spawn(shell, [], {
+      name: 'xterm-color',
+      cols: 80,
+      rows: 24,
+      cwd: process.cwd(),
+      env: process.env
     });
     
-    // Send a welcome message and prompt
-    setTimeout(() => {
-      mainWindow.webContents.send('terminal-output', `Welcome to terminal\r\n`);
-      mainWindow.webContents.send('terminal-output', `${process.cwd()}$ `);
-    }, 100);
-    
-    // Send stdout to renderer with proper line ending conversion
-    terminalProcess.stdout.on('data', (data) => {
-      let output = data.toString();
-      // Convert Unix line endings to Windows style for xterm
-      output = output.replace(/\r?\n/g, '\r\n');
-      mainWindow.webContents.send('terminal-output', output);
+    // Send output to renderer
+    ptyProcess.onData((data) => {
+      mainWindow.webContents.send('terminal-output', data);
     });
     
-    // Send stderr to renderer with proper line ending conversion
-    terminalProcess.stderr.on('data', (data) => {
-      let output = data.toString();
-      // Convert Unix line endings to Windows style for xterm
-      output = output.replace(/\r?\n/g, '\r\n');
-      mainWindow.webContents.send('terminal-output', output);
-    });
-    
-    terminalProcess.on('exit', (code) => {
-      mainWindow.webContents.send('terminal-output', `\r\nProcess exited with code ${code}\r\n`);
-      terminalProcess = null;
+    ptyProcess.onExit((exitCode) => {
+      mainWindow.webContents.send('terminal-output', `\r\nTerminal session ended (code ${exitCode.exitCode})\r\n`);
+      ptyProcess = null;
     });
     
     return { success: true };
@@ -318,8 +302,20 @@ ipcMain.handle('terminal-start', async (event) => {
 
 ipcMain.handle('terminal-write', async (event, data) => {
   try {
-    if (terminalProcess && terminalProcess.stdin.writable) {
-      terminalProcess.stdin.write(data);
+    if (ptyProcess) {
+      ptyProcess.write(data);
+      return { success: true };
+    }
+    return { success: false, error: 'Terminal not running' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('terminal-resize', async (event, cols, rows) => {
+  try {
+    if (ptyProcess) {
+      ptyProcess.resize(cols, rows);
       return { success: true };
     }
     return { success: false, error: 'Terminal not running' };
@@ -330,9 +326,9 @@ ipcMain.handle('terminal-write', async (event, data) => {
 
 ipcMain.handle('terminal-stop', async (event) => {
   try {
-    if (terminalProcess) {
-      terminalProcess.kill();
-      terminalProcess = null;
+    if (ptyProcess) {
+      ptyProcess.kill();
+      ptyProcess = null;
     }
     return { success: true };
   } catch (error) {

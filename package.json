@@ -17,6 +17,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "css-loader": "^7.1.2",
     "electron": "^32.0.0",
     "electron-rebuild": "^3.2.9",
@@ -28,6 +29,7 @@
   },
   "dependencies": {
     "@xterm/xterm": "^5.5.0",
+    "node-pty": "^1.0.0",
     "split.js": "^1.6.5",
     "splitpanes": "^4.0.4"
   }
