@@ -88,7 +88,9 @@ body {
 .lm_header {
     background: #2d2d30 !important;
     border-bottom: 1px solid #3e3e42 !important;
-    height: 25px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
 }
 
 .lm_header .lm_tab {
@@ -96,7 +98,16 @@ body {
     color: #cccccc !important;
     border-right: 1px solid #3e3e42 !important;
     font-size: 12px !important;
-    padding: 0 15px !important;
+    padding: 0 8px !important;
+    padding-right: 35px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    border-radius: 0 !important;
+    transition: all 0.2s ease !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 .lm_header .lm_tab.lm_active {
@@ -104,9 +115,26 @@ body {
     color: #ffffff !important;
 }
 
-.lm_header .lm_tab:hover {
+.lm_header .lm_tab:hover:not(.lm_active) {
     background: #3e3e42 !important;
     color: #ffffff !important;
+}
+
+.lm_header .lm_tabs {
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+.lm_header .lm_controls {
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    position: absolute !important;
+    right: 2px !important;
+    top: 0 !important;
 }
 
 .lm_content {
@@ -131,16 +159,38 @@ body {
 .lm_header .lm_controls .lm_maximise,
 .lm_header .lm_controls .lm_close,
 .lm_header .lm_controls .lm_popout {
-    color: #cccccc !important;
+    color: inherit !important;
     background: transparent !important;
     border: none !important;
+    border-radius: 0 !important;
+    width: 14px !important;
+    height: 14px !important;
+    font-size: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 1px !important;
+    transition: none !important;
+    flex-shrink: 0 !important;
 }
 
 .lm_header .lm_controls .lm_maximise:hover,
 .lm_header .lm_controls .lm_close:hover,
 .lm_header .lm_controls .lm_popout:hover {
-    background: #3e3e42 !important;
-    color: #ffffff !important;
+    color: inherit !important;
+    background: transparent !important;
+}
+
+/* Hide close buttons if you want to disable them - uncomment to hide */
+/* .lm_header .lm_controls .lm_close {
+    display: none !important;
+} */
+
+/* Better styling for close button if kept visible */
+.lm_header .lm_controls .lm_close:before {
+    content: '×' !important;
+    font-weight: normal !important;
+    font-size: 8px !important;
 }
 
 /* Browser Styles */
