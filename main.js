@@ -1,6 +1,7 @@
 const { app, BrowserWindow, BrowserView, Menu, ipcMain, dialog } = require('electron');
 const fs = require('fs').promises;
 const path = require('path');
+const { spawn } = require('child_process');
 
 if (process.env.NODE_ENV === 'development') {
   require('electron-reload')(__dirname, {
@@ -12,6 +13,7 @@ if (process.env.NODE_ENV === 'development') {
 let mainWindow;
 let browserView;
 let browserMountBounds = null;
+let terminalProcess = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -19,8 +21,8 @@ function createWindow() {
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: false,
-      nodeIntegration: true
+      contextIsolation: true,
+      nodeIntegration: false
     },
     icon: path.join(__dirname, 'icon.png')
   });
@@ -258,6 +260,80 @@ ipcMain.handle('read-file', async (event, filePath) => {
 ipcMain.handle('write-file', async (event, filePath, content) => {
   try {
     await fs.writeFile(filePath, content, 'utf8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Terminal handlers using child_process
+ipcMain.handle('terminal-start', async (event) => {
+  try {
+    if (terminalProcess) {
+      terminalProcess.kill();
+    }
+    
+    // Start shell process with better configuration
+    const shell = process.platform === 'win32' ? 'cmd' : '/bin/bash';
+    const args = process.platform === 'win32' ? [] : ['-i']; // Interactive mode for bash
+    
+    terminalProcess = spawn(shell, args, {
+      cwd: __dirname,
+      env: { ...process.env, TERM: 'xterm-256color' },
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    // Send a welcome message and prompt
+    setTimeout(() => {
+      mainWindow.webContents.send('terminal-output', `Welcome to terminal\r\n`);
+      mainWindow.webContents.send('terminal-output', `${process.cwd()}$ `);
+    }, 100);
+    
+    // Send stdout to renderer with proper line ending conversion
+    terminalProcess.stdout.on('data', (data) => {
+      let output = data.toString();
+      // Convert Unix line endings to Windows style for xterm
+      output = output.replace(/\r?\n/g, '\r\n');
+      mainWindow.webContents.send('terminal-output', output);
+    });
+    
+    // Send stderr to renderer with proper line ending conversion
+    terminalProcess.stderr.on('data', (data) => {
+      let output = data.toString();
+      // Convert Unix line endings to Windows style for xterm
+      output = output.replace(/\r?\n/g, '\r\n');
+      mainWindow.webContents.send('terminal-output', output);
+    });
+    
+    terminalProcess.on('exit', (code) => {
+      mainWindow.webContents.send('terminal-output', `\r\nProcess exited with code ${code}\r\n`);
+      terminalProcess = null;
+    });
+    
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('terminal-write', async (event, data) => {
+  try {
+    if (terminalProcess && terminalProcess.stdin.writable) {
+      terminalProcess.stdin.write(data);
+      return { success: true };
+    }
+    return { success: false, error: 'Terminal not running' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('terminal-stop', async (event) => {
+  try {
+    if (terminalProcess) {
+      terminalProcess.kill();
+      terminalProcess = null;
+    }
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

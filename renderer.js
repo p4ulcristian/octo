@@ -224,29 +224,72 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function initializeTerminal() {
         const terminalElement = document.getElementById('xterm-terminal');
-        terminal = new Terminal();
-        terminal.open(terminalElement);
-        terminal.write('$ ');
-        
-        let currentLine = '';
-        terminal.onData(data => {
-            if (data === '\r') {
-                terminal.write('\r\n');
-                if (currentLine.trim()) {
-                    terminal.write(`You typed: ${currentLine}\r\n`);
-                }
-                currentLine = '';
-                terminal.write('$ ');
-            } else if (data === '\u007f') {
-                if (currentLine.length > 0) {
-                    currentLine = currentLine.slice(0, -1);
-                    terminal.write('\b \b');
-                }
-            } else {
-                currentLine += data;
-                terminal.write(data);
+        terminal = new Terminal({
+            cols: 80,
+            rows: 24,
+            fontSize: 14,
+            fontFamily: 'Consolas, "Courier New", monospace',
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#ffffff'
             }
         });
+        terminal.open(terminalElement);
+        
+        // Start the terminal process
+        if (window.electronAPI && window.electronAPI.terminalStart) {
+            window.electronAPI.terminalStart().then(() => {
+                console.log('Terminal process started');
+            }).catch(error => {
+                console.error('Failed to start terminal:', error);
+                terminal.write('Failed to start terminal process\r\n');
+            });
+            
+            // Listen for output from the terminal process
+            window.electronAPI.onTerminalOutput((data) => {
+                terminal.write(data);
+            });
+            
+            // Send input to the terminal process with local echo
+            terminal.onData(data => {
+                // Show what you're typing (local echo)
+                if (data === '\r') { // Enter key
+                    terminal.write('\r\n');
+                } else if (data === '\u007f') { // Backspace
+                    terminal.write('\b \b');
+                } else if (data >= ' ') { // Printable characters
+                    terminal.write(data);
+                }
+                
+                if (window.electronAPI && window.electronAPI.terminalWrite) {
+                    window.electronAPI.terminalWrite(data);
+                }
+            });
+            
+            
+        } else {
+            // Fallback to echo mode if no terminal API
+            terminal.write('Terminal API not available - echo mode\r\n$ ');
+            let currentLine = '';
+            terminal.onData(data => {
+                if (data === '\r') {
+                    terminal.write('\r\n');
+                    if (currentLine.trim()) {
+                        terminal.write(`You typed: ${currentLine}\r\n`);
+                    }
+                    currentLine = '';
+                    terminal.write('$ ');
+                } else if (data === '\u007f') {
+                    if (currentLine.length > 0) {
+                        currentLine = currentLine.slice(0, -1);
+                        terminal.write('\b \b');
+                    }
+                } else {
+                    currentLine += data;
+                    terminal.write(data);
+                }
+            });
+        }
     }
 
     // Initialize CodeMirror Editor

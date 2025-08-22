@@ -24,5 +24,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   panelResized: (panelType, sizes) => ipcRenderer.send('panel-resized', panelType, sizes),
   sendBrowserMountBounds: (bounds) => ipcRenderer.send('browser-mount-bounds', bounds),
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
-  writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content)
+  writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
+  
+  // Terminal functions
+  terminalStart: () => ipcRenderer.invoke('terminal-start'),
+  terminalWrite: (data) => ipcRenderer.invoke('terminal-write', data),
+  terminalStop: () => ipcRenderer.invoke('terminal-stop'),
+  onTerminalOutput: (callback) => {
+    ipcRenderer.on('terminal-output', (event, data) => callback(data));
+  }
 });
