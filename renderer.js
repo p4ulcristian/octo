@@ -210,8 +210,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
 
-                // Terminal initialization is now handled in initializeTerminalComponent
-                // No need for reinitializing when tab becomes active
+                // Handle terminal initialization when tab becomes active (for restored tabs that weren't visible)
+                if (componentName === 'terminal' && !contentInstances.terminals[componentId]) {
+                    setTimeout(() => {
+                        const terminalElement = document.getElementById(`terminal-${componentId}`);
+                        if (terminalElement && terminalElement.offsetParent !== null) {
+                            console.log('🔄 Lazy initializing terminal for active tab:', componentId);
+                            // Re-run the terminal initialization for this component
+                            const container = { getElement: () => $(terminalElement).parent() };
+                            const componentState = { id: componentId };
+                            
+                            // Find the saved state if it exists
+                            if (goldenLayout) {
+                                function findComponentState(item) {
+                                    if (item.type === 'component' && item.config?.componentState?.id === componentId) {
+                                        return item.config.componentState;
+                                    }
+                                    if (item.contentItems) {
+                                        for (let child of item.contentItems) {
+                                            const state = findComponentState(child);
+                                            if (state) return state;
+                                        }
+                                    }
+                                    return null;
+                                }
+                                const savedState = findComponentState(goldenLayout.root);
+                                if (savedState) {
+                                    Object.assign(componentState, savedState);
+                                }
+                            }
+                            
+                            initializeTerminalComponent(container, componentState, componentId);
+                        }
+                    }, 100);
+                }
 
                 // Claude initialization is now handled in initializeClaudeComponent
                 // No need for reinitializing when tab becomes active
@@ -454,6 +486,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 visible: terminalDiv?.offsetParent !== null,
                 parent: terminalDiv?.offsetParent
             });
+            
+            // If terminal is not visible, skip initialization - it will be initialized when tab becomes active
+            if (terminalDiv && terminalDiv.offsetParent === null) {
+                console.log(`⏳ Terminal ${componentId} not visible, will initialize when tab becomes active`);
+                return;
+            }
+            
             if (terminalDiv && terminalDiv.offsetParent !== null) {
                 terminal.open(terminalDiv);
                 isTerminalReady = true;
