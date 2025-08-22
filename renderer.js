@@ -40,36 +40,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 selectionEnabled: false
             },
             content: [{
-                type: 'row',
+                type: 'stack',
+                activeItemIndex: 1,
                 content: [{
-                    type: 'column',
-                    width: 60,
-                    content: [{
-                        type: 'component',
-                        componentName: 'preview',
-                        componentState: { id: 'preview-main' },
-                        title: 'Browser',
-                        height: 60
-                    }, {
-                        type: 'component',
-                        componentName: 'claude',
-                        componentState: { id: 'claude-main' },
-                        title: 'Claude'
-                    }]
+                    type: 'component',
+                    componentName: 'preview',
+                    componentState: { id: 'preview-main' },
+                    title: 'Browser'
                 }, {
-                    type: 'column',
-                    content: [{
-                        type: 'component',
-                        componentName: 'terminal',
-                        componentState: { id: 'terminal-main' },
-                        title: 'Terminal',
-                        height: 60
-                    }, {
-                        type: 'component',
-                        componentName: 'editor',
-                        componentState: { id: 'editor-main' },
-                        title: 'Editor'
-                    }]
+                    type: 'component',
+                    componentName: 'claude',
+                    componentState: { id: 'claude-main' },
+                    title: 'Claude'
+                }, {
+                    type: 'component',
+                    componentName: 'terminal',
+                    componentState: { id: 'terminal-main' },
+                    title: 'Terminal'
+                }, {
+                    type: 'component',
+                    componentName: 'editor',
+                    componentState: { id: 'editor-main' },
+                    title: 'Editor'
                 }]
             }]
         };
@@ -125,6 +117,55 @@ document.addEventListener('DOMContentLoaded', async () => {
                         activePreview.updateBounds();
                     }
                 }, 200);
+            });
+
+            // Handle tab selection changes
+            stack.on('activeContentItemChanged', function(contentItem) {
+                const componentName = contentItem.config.componentName;
+                const componentId = contentItem.config.componentState.id;
+                
+                console.log('Tab changed to:', componentName, componentId);
+                
+                // Handle browser view visibility
+                if (componentName === 'preview') {
+                    // Show browser view for preview tab
+                    setTimeout(() => {
+                        const preview = contentInstances.previews[componentId];
+                        if (preview && preview.updateBounds) {
+                            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                                window.electronAPI.showBrowserView();
+                            }
+                            preview.updateBounds();
+                        }
+                    }, 100);
+                } else {
+                    // Hide browser view for non-preview tabs
+                    if (window.electronAPI && window.electronAPI.hideBrowserView) {
+                        window.electronAPI.hideBrowserView();
+                    }
+                }
+
+                // Handle terminal initialization when tab becomes active
+                if (componentName === 'terminal' && !contentInstances.terminals[componentId]) {
+                    setTimeout(() => {
+                        const terminalElement = document.getElementById(`terminal-${componentId}`);
+                        if (terminalElement && terminalElement.offsetParent !== null) {
+                            console.log('Reinitializing terminal for active tab:', componentId);
+                            initializeTerminalForActiveTab(componentId, terminalElement);
+                        }
+                    }, 100);
+                }
+
+                // Handle Claude terminal initialization when tab becomes active
+                if (componentName === 'claude' && !contentInstances.claudeTerminals[componentId]) {
+                    setTimeout(() => {
+                        const claudeElement = document.getElementById(`claude-${componentId}`);
+                        if (claudeElement && claudeElement.offsetParent !== null) {
+                            console.log('Reinitializing Claude terminal for active tab:', componentId);
+                            initializeClaudeForActiveTab(componentId, claudeElement);
+                        }
+                    }, 100);
+                }
             });
         });
 
@@ -1242,6 +1283,89 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         input.focus();
         input.select();
+    }
+
+    // Helper functions for reinitializing components when tabs become active
+    function initializeTerminalForActiveTab(componentId, terminalElement) {
+        const terminal = new Terminal({
+            cols: 80,
+            rows: 24,
+            fontSize: 14,
+            fontFamily: 'Consolas, "Courier New", monospace',
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#ffffff'
+            }
+        });
+        
+        terminal.open(terminalElement);
+        contentInstances.terminals[componentId] = terminal;
+        
+        // Start the terminal process
+        if (window.electronAPI && window.electronAPI.terminalStart) {
+            window.electronAPI.terminalStart().then(() => {
+                console.log('Terminal process started for active tab:', componentId);
+            }).catch((error) => {
+                console.error('Failed to start terminal process for active tab:', error);
+            });
+        }
+        
+        // Handle data from terminal
+        if (window.electronAPI && window.electronAPI.onTerminalOutput) {
+            window.electronAPI.onTerminalOutput((data) => {
+                if (terminal) {
+                    terminal.write(data);
+                }
+            });
+        }
+        
+        // Handle user input
+        terminal.onData(data => {
+            if (window.electronAPI && window.electronAPI.terminalWrite) {
+                window.electronAPI.terminalWrite(data);
+            }
+        });
+    }
+
+    function initializeClaudeForActiveTab(componentId, claudeElement) {
+        const claudeTerminal = new Terminal({
+            cols: 80,
+            rows: 24,
+            fontSize: 14,
+            fontFamily: 'Consolas, "Courier New", monospace',
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#ffffff'
+            }
+        });
+        
+        claudeTerminal.open(claudeElement);
+        contentInstances.claudeTerminals[componentId] = claudeTerminal;
+        
+        // Start Claude terminal process
+        if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
+            window.electronAPI.claudeTerminalStart().then(() => {
+                console.log('Claude terminal process started for active tab:', componentId);
+            }).catch((error) => {
+                console.error('Failed to start Claude terminal process for active tab:', error);
+            });
+        }
+        
+        // Handle data from Claude terminal
+        if (window.electronAPI && window.electronAPI.onClaudeTerminalData) {
+            window.electronAPI.onClaudeTerminalData((data) => {
+                if (claudeTerminal) {
+                    claudeTerminal.write(data);
+                }
+            });
+        }
+        
+        // Handle user input
+        claudeTerminal.onData(data => {
+            if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
+                window.electronAPI.claudeTerminalWrite(data);
+            }
+        });
     }
 
     // Load system information
