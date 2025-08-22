@@ -3,6 +3,7 @@ window.addEventListener('load', () => {
     console.log('Window loaded - Terminal available:', typeof Terminal);
     console.log('window.Terminal:', window.Terminal);
     console.log('Golden Layout available:', typeof GoldenLayout);
+    console.log('jQuery available:', typeof $);
     console.log('All scripts loaded');
 });
 
@@ -15,6 +16,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         previews: {}
     };
 
+    // Component cleanup functions
+    const cleanupFunctions = {};
+
     // Initialize Golden Layout
     function initializeGoldenLayout() {
         if (typeof GoldenLayout === 'undefined') {
@@ -22,11 +26,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        if (typeof $ === 'undefined') {
+            console.error('jQuery not loaded');
+            return;
+        }
+
         const config = {
             settings: {
                 showPopoutIcon: false,
                 showMaximiseIcon: true,
-                showCloseIcon: false
+                showCloseIcon: false,
+                reorderEnabled: true,
+                selectionEnabled: false
             },
             content: [{
                 type: 'row',
@@ -36,13 +47,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     content: [{
                         type: 'component',
                         componentName: 'preview',
-                        componentState: { label: 'Browser' },
+                        componentState: { id: 'preview-main' },
                         title: 'Browser',
                         height: 60
                     }, {
                         type: 'component',
                         componentName: 'claude',
-                        componentState: { label: 'Claude' },
+                        componentState: { id: 'claude-main' },
                         title: 'Claude'
                     }]
                 }, {
@@ -50,36 +61,81 @@ document.addEventListener('DOMContentLoaded', async () => {
                     content: [{
                         type: 'component',
                         componentName: 'terminal',
-                        componentState: { label: 'Terminal' },
+                        componentState: { id: 'terminal-main' },
                         title: 'Terminal',
                         height: 60
                     }, {
                         type: 'component',
                         componentName: 'editor',
-                        componentState: { label: 'Editor' },
+                        componentState: { id: 'editor-main' },
                         title: 'Editor'
                     }]
                 }]
             }]
         };
 
-        goldenLayout = new GoldenLayout(config, document.getElementById('golden-layout-container'));
+        goldenLayout = new GoldenLayout(config, $('#golden-layout-container'));
 
-        // Register components
+        // Register components with proper cleanup
         goldenLayout.registerComponent('preview', function(container, componentState) {
-            initializePreviewComponent(container, componentState);
+            const id = componentState.id || 'preview-' + Date.now();
+            initializePreviewComponent(container, componentState, id);
         });
 
         goldenLayout.registerComponent('terminal', function(container, componentState) {
-            initializeTerminalComponent(container, componentState);
+            const id = componentState.id || 'terminal-' + Date.now();
+            initializeTerminalComponent(container, componentState, id);
         });
 
         goldenLayout.registerComponent('claude', function(container, componentState) {
-            initializeClaudeComponent(container, componentState);
+            const id = componentState.id || 'claude-' + Date.now();
+            initializeClaudeComponent(container, componentState, id);
         });
 
         goldenLayout.registerComponent('editor', function(container, componentState) {
-            initializeEditorComponent(container, componentState);
+            const id = componentState.id || 'editor-' + Date.now();
+            initializeEditorComponent(container, componentState, id);
+        });
+
+        // Handle component destruction
+        goldenLayout.on('componentDestroyed', function(component) {
+            const componentId = component.config.componentState.id;
+            if (cleanupFunctions[componentId]) {
+                cleanupFunctions[componentId]();
+                delete cleanupFunctions[componentId];
+            }
+        });
+
+        goldenLayout.on('stateChanged', function() {
+            // Update browser bounds after state changes - only for active browser
+            setTimeout(() => {
+                const activePreview = Object.values(contentInstances.previews).find(preview => preview && preview.isActive);
+                if (activePreview && activePreview.updateBounds) {
+                    activePreview.updateBounds();
+                }
+            }, 100);
+        });
+
+        goldenLayout.on('stackCreated', function(stack) {
+            // Update browser bounds when items are dropped - only for active browser
+            stack.header.on('itemsDropped', function() {
+                setTimeout(() => {
+                    const activePreview = Object.values(contentInstances.previews).find(preview => preview && preview.isActive);
+                    if (activePreview && activePreview.updateBounds) {
+                        activePreview.updateBounds();
+                    }
+                }, 200);
+            });
+        });
+
+        goldenLayout.on('itemDropped', function() {
+            // Update browser bounds after dropping - only for active browser
+            setTimeout(() => {
+                const activePreview = Object.values(contentInstances.previews).find(preview => preview && preview.isActive);
+                if (activePreview && activePreview.updateBounds) {
+                    activePreview.updateBounds();
+                }
+            }, 300);
         });
 
         goldenLayout.init();
@@ -87,28 +143,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Golden Layout initialized');
     }
 
-    // Component initializers
-    function initializePreviewComponent(container, componentState) {
-        const paneId = 'preview-' + Date.now();
+    // Component initializers with proper cleanup
+    function initializePreviewComponent(container, componentState, componentId) {
         const element = container.getElement();
         
-        element.css({
-            height: '100%',
-            width: '100%'
-        });
-        
         element.html(`
-            <div id="preview-${paneId}" style="height: 100%; width: 100%;">
-                <div class="browser-mount" id="browser-mount-${paneId}" style="width: 100%; height: 100%; position: relative; background: #f9f9f9; border: 2px dashed #ccc; overflow: hidden; box-sizing: border-box;">
+            <div id="preview-${componentId}" style="height: 100%; width: 100%;">
+                <div class="browser-mount" id="browser-mount-${componentId}" style="width: 100%; height: 100%; position: relative; background: #f9f9f9; border: 2px dashed #ccc; overflow: hidden; box-sizing: border-box;">
                     <div class="browser-placeholder"><p>Loading browser...</p></div>
                 </div>
             </div>
         `);
 
-        const browserMount = element.find(`#browser-mount-${paneId}`)[0];
+        const browserMount = element.find(`#browser-mount-${componentId}`)[0];
         
         // Browser mount bounds update function
         function updateBrowserMountBounds() {
+            if (!browserMount || !browserMount.getBoundingClientRect) return;
+            
             const rect = browserMount.getBoundingClientRect();
             if (window.electronAPI && window.electronAPI.sendBrowserMountBounds && rect.width > 0 && rect.height > 0) {
                 const adjustedBounds = {
@@ -118,33 +170,157 @@ document.addEventListener('DOMContentLoaded', async () => {
                     height: Math.floor(rect.height - 4)
                 };
                 
-                console.log(`Updating browser bounds for ${paneId}:`, adjustedBounds);
+                console.log(`Updating browser bounds for ${componentId}:`, adjustedBounds);
                 window.electronAPI.sendBrowserMountBounds(adjustedBounds);
             }
         }
 
-        // Clear any existing active browser mounts
-        Object.values(contentInstances.previews).forEach(preview => {
-            if (preview && preview.browserMount) {
-                preview.browserMount.classList.remove('active-browser-mount');
+        // Global drag detection for better browser view management
+        let isDragging = false;
+        
+        // Add global drag detection
+        document.addEventListener('dragstart', function() {
+            if (!isDragging) {
+                const hasActiveBrowser = Object.values(contentInstances.previews).some(preview => preview && preview.isActive);
+                if (hasActiveBrowser) {
+                    isDragging = true;
+                    console.log('Global drag started - hiding active browser view');
+                    if (window.electronAPI && window.electronAPI.hideBrowserView) {
+                        window.electronAPI.hideBrowserView();
+                    }
+                }
+            }
+        });
+        
+        document.addEventListener('dragend', function() {
+            if (isDragging) {
+                isDragging = false;
+                console.log('Global drag ended - restoring active browser view');
+                setTimeout(() => {
+                    // Find and restore the active browser view
+                    const activePreview = Object.values(contentInstances.previews).find(preview => preview && preview.isActive);
+                    if (activePreview) {
+                        if (window.electronAPI && window.electronAPI.showBrowserView) {
+                            window.electronAPI.showBrowserView();
+                        }
+                        activePreview.updateBounds();
+                    }
+                }, 200);
             }
         });
 
-        // Mark this as the active browser mount
-        browserMount.classList.add('active-browser-mount');
+        // Also listen for mouse events that might indicate dragging
+        let mouseDownTime = 0;
         
-        // Update bounds after layout is ready
-        setTimeout(updateBrowserMountBounds, 500);
+        document.addEventListener('mousedown', function(e) {
+            // Check if we're clicking on Golden Layout elements
+            if (e.target.closest('.lm_header') || e.target.closest('.lm_tab')) {
+                mouseDownTime = Date.now();
+            }
+        });
         
-        // Listen for container resize
-        container.on('resize', () => {
-            setTimeout(updateBrowserMountBounds, 100);
+        document.addEventListener('mousemove', function(e) {
+            // If mouse has been down for more than 100ms and moving, likely dragging
+            if (mouseDownTime > 0 && (Date.now() - mouseDownTime > 100) && !isDragging) {
+                if (e.target.closest('.lm_header') || e.target.closest('.lm_tab')) {
+                    const hasActiveBrowser = Object.values(contentInstances.previews).some(preview => preview && preview.isActive);
+                    if (hasActiveBrowser) {
+                        isDragging = true;
+                        console.log('Mouse drag detected - hiding active browser view');
+                        if (window.electronAPI && window.electronAPI.hideBrowserView) {
+                            window.electronAPI.hideBrowserView();
+                        }
+                    }
+                }
+            }
+        });
+        
+        document.addEventListener('mouseup', function() {
+            mouseDownTime = 0;
+            if (isDragging) {
+                isDragging = false;
+                console.log('Mouse drag ended - restoring active browser view');
+                setTimeout(() => {
+                    // Find and restore the active browser view
+                    const activePreview = Object.values(contentInstances.previews).find(preview => preview && preview.isActive);
+                    if (activePreview) {
+                        if (window.electronAPI && window.electronAPI.showBrowserView) {
+                            window.electronAPI.showBrowserView();
+                        }
+                        activePreview.updateBounds();
+                    }
+                }, 200);
+            }
         });
 
-        contentInstances.previews[paneId] = { 
+        // Initially hidden - will be shown when tab is selected
+        console.log('Browser component initialized (hidden):', componentId);
+        
+        // Listen for container resize
+        container.on('resize', updateBrowserMountBounds);
+
+        // Listen for tab selection changes
+        container.on('tab', function(tab) {
+            // This component's tab was selected
+            console.log('Browser tab selected:', componentId);
+            showBrowserView();
+        });
+
+        container.on('hide', function() {
+            // This component was hidden (another tab selected)
+            console.log('Browser tab hidden:', componentId);
+            hideBrowserView();
+        });
+
+        function showBrowserView() {
+            console.log('Showing browser view for:', componentId);
+            // Mark this as the active browser mount
+            Object.values(contentInstances.previews).forEach(preview => {
+                preview.isActive = false;
+                if (preview.browserMount) {
+                    preview.browserMount.classList.remove('active-browser-mount');
+                }
+            });
+            
+            if (browserMount) {
+                browserMount.classList.add('active-browser-mount');
+            }
+            
+            contentInstances.previews[componentId].isActive = true;
+            
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+                setTimeout(updateBrowserMountBounds, 100);
+            }
+        }
+
+        function hideBrowserView() {
+            console.log('Hiding browser view for:', componentId);
+            contentInstances.previews[componentId].isActive = false;
+            
+            if (browserMount) {
+                browserMount.classList.remove('active-browser-mount');
+            }
+            
+            if (window.electronAPI && window.electronAPI.hideBrowserView) {
+                window.electronAPI.hideBrowserView();
+            }
+        }
+
+        contentInstances.previews[componentId] = { 
             browserMount, 
             updateBounds: updateBrowserMountBounds,
-            isActive: true
+            isActive: false,
+            show: showBrowserView,
+            hide: hideBrowserView
+        };
+
+        // Cleanup function
+        cleanupFunctions[componentId] = function() {
+            if (contentInstances.previews[componentId]) {
+                delete contentInstances.previews[componentId];
+            }
+            container.off('resize', updateBrowserMountBounds);
         };
 
         // Navigate to saved preview URL if available
@@ -159,18 +335,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function initializeTerminalComponent(container, componentState) {
-        const paneId = 'terminal-' + Date.now();
+    function initializeTerminalComponent(container, componentState, componentId) {
         const element = container.getElement();
         
-        element.css({
-            height: '100%',
-            width: '100%'
-        });
-        
-        element.html(`<div id="terminal-${paneId}" style="height: 100%; width: 100%;"></div>`);
+        element.html(`<div id="terminal-${componentId}" style="height: 100%; width: 100%;"></div>`);
 
-        const terminalDiv = element.find(`#terminal-${paneId}`)[0];
+        const terminalDiv = element.find(`#terminal-${componentId}`)[0];
         
         const terminal = new Terminal({
             cols: 80,
@@ -183,67 +353,85 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
-        terminal.open(terminalDiv);
-        contentInstances.terminals[paneId] = terminal;
+        let isTerminalReady = false;
         
-        // Start the terminal process
-        if (window.electronAPI && window.electronAPI.terminalStart) {
-            window.electronAPI.terminalStart().then(() => {
-                console.log('Terminal process started for', paneId);
+        setTimeout(() => {
+            if (terminalDiv && terminalDiv.offsetParent !== null) {
+                terminal.open(terminalDiv);
+                isTerminalReady = true;
                 
-                // Change to project directory if set
-                const projectPath = localStorage.getItem('octo-project-path');
-                if (projectPath && projectPath.trim()) {
-                    console.log('Changing terminal directory to:', projectPath);
-                    window.electronAPI.terminalWrite(`cd "${projectPath}"\n`);
+                contentInstances.terminals[componentId] = terminal;
+                
+                // Start the terminal process
+                if (window.electronAPI && window.electronAPI.terminalStart) {
+                    window.electronAPI.terminalStart().then(() => {
+                        console.log('Terminal process started for', componentId);
+                        
+                        // Change to project directory if set
+                        const projectPath = localStorage.getItem('octo-project-path');
+                        if (projectPath && projectPath.trim()) {
+                            console.log('Changing terminal directory to:', projectPath);
+                            window.electronAPI.terminalWrite(`cd "${projectPath}"\n`);
+                        }
+                    }).catch(error => {
+                        console.error('Failed to start terminal:', error);
+                        if (isTerminalReady) {
+                            terminal.write('Failed to start terminal process\r\n');
+                        }
+                    });
+                    
+                    // Listen for output
+                    window.electronAPI.onTerminalOutput((data) => {
+                        if (isTerminalReady && terminal) {
+                            terminal.write(data);
+                        }
+                    });
+                    
+                    // Send input
+                    terminal.onData(data => {
+                        if (window.electronAPI && window.electronAPI.terminalWrite) {
+                            window.electronAPI.terminalWrite(data);
+                        }
+                    });
+                    
+                    // Handle resize
+                    terminal.onResize(({ cols, rows }) => {
+                        if (window.electronAPI && window.electronAPI.terminalResize) {
+                            window.electronAPI.terminalResize(cols, rows);
+                        }
+                    });
                 }
-            }).catch(error => {
-                console.error('Failed to start terminal:', error);
-                terminal.write('Failed to start terminal process\r\n');
-            });
-            
-            // Listen for output
-            window.electronAPI.onTerminalOutput((data) => {
-                terminal.write(data);
-            });
-            
-            // Send input
-            terminal.onData(data => {
-                if (window.electronAPI && window.electronAPI.terminalWrite) {
-                    window.electronAPI.terminalWrite(data);
-                }
-            });
-            
-            // Handle resize
-            terminal.onResize(({ cols, rows }) => {
-                if (window.electronAPI && window.electronAPI.terminalResize) {
-                    window.electronAPI.terminalResize(cols, rows);
-                }
-            });
-        }
+            }
+        }, 100);
 
         // Resize terminal when container resizes
-        container.on('resize', () => {
+        function handleResize() {
             setTimeout(() => {
-                if (terminal.fit) {
+                if (isTerminalReady && terminal && terminal.fit) {
                     terminal.fit();
                 }
             }, 50);
-        });
+        }
+        
+        container.on('resize', handleResize);
+
+        // Cleanup function
+        cleanupFunctions[componentId] = function() {
+            isTerminalReady = false;
+            if (contentInstances.terminals[componentId]) {
+                contentInstances.terminals[componentId].dispose();
+                delete contentInstances.terminals[componentId];
+            }
+            container.off('resize', handleResize);
+        };
     }
 
-    function initializeClaudeComponent(container, componentState) {
-        const paneId = 'claude-' + Date.now();
+    function initializeClaudeComponent(container, componentState, componentId) {
         const element = container.getElement();
         
-        element.css({
-            height: '100%',
-            width: '100%'
-        });
-        
-        element.html(`<div id="claude-${paneId}" style="height: 100%; width: 100%;"></div>`);
+        element.html(`<div id="claude-${componentId}" style="height: 100%; width: 100%;"></div>`);
 
-        const claudeDiv = element.find(`#claude-${paneId}`)[0];
+        const claudeDiv = element.find(`#claude-${componentId}`)[0];
         
         const claudeTerminal = new Terminal({
             cols: 80,
@@ -256,117 +444,195 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
-        claudeTerminal.open(claudeDiv);
-        contentInstances.claudeTerminals[paneId] = claudeTerminal;
+        let isTerminalReady = false;
         
-        // Start the Claude terminal process
-        if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
-            window.electronAPI.claudeTerminalStart().then(() => {
-                console.log('Claude terminal process started for', paneId);
+        setTimeout(() => {
+            if (claudeDiv && claudeDiv.offsetParent !== null) {
+                claudeTerminal.open(claudeDiv);
+                isTerminalReady = true;
                 
-                // Change to project directory if set
-                const projectPath = localStorage.getItem('octo-project-path');
-                if (projectPath && projectPath.trim()) {
-                    console.log('Changing Claude terminal directory to:', projectPath);
-                    window.electronAPI.claudeTerminalWrite(`cd "${projectPath}"\n`);
+                contentInstances.claudeTerminals[componentId] = claudeTerminal;
+                
+                // Start the Claude terminal process
+                if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
+                    window.electronAPI.claudeTerminalStart().then(() => {
+                        console.log('Claude terminal process started for', componentId);
+                        
+                        // Change to project directory if set
+                        const projectPath = localStorage.getItem('octo-project-path');
+                        if (projectPath && projectPath.trim()) {
+                            console.log('Changing Claude terminal directory to:', projectPath);
+                            window.electronAPI.claudeTerminalWrite(`cd "${projectPath}"\n`);
+                        }
+                    }).catch(error => {
+                        console.error('Failed to start Claude terminal:', error);
+                        if (isTerminalReady) {
+                            claudeTerminal.write('Failed to start Claude terminal process\r\n');
+                        }
+                    });
+                    
+                    // Listen for output
+                    window.electronAPI.onClaudeTerminalOutput((data) => {
+                        if (isTerminalReady && claudeTerminal) {
+                            claudeTerminal.write(data);
+                        }
+                    });
+                    
+                    // Send input
+                    claudeTerminal.onData(data => {
+                        if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
+                            window.electronAPI.claudeTerminalWrite(data);
+                        }
+                    });
+                    
+                    // Handle resize
+                    claudeTerminal.onResize(({ cols, rows }) => {
+                        if (window.electronAPI && window.electronAPI.claudeTerminalResize) {
+                            window.electronAPI.claudeTerminalResize(cols, rows);
+                        }
+                    });
                 }
-            }).catch(error => {
-                console.error('Failed to start Claude terminal:', error);
-                claudeTerminal.write('Failed to start Claude terminal process\r\n');
-            });
-            
-            // Listen for output
-            window.electronAPI.onClaudeTerminalOutput((data) => {
-                claudeTerminal.write(data);
-            });
-            
-            // Send input
-            claudeTerminal.onData(data => {
-                if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
-                    window.electronAPI.claudeTerminalWrite(data);
-                }
-            });
-            
-            // Handle resize
-            claudeTerminal.onResize(({ cols, rows }) => {
-                if (window.electronAPI && window.electronAPI.claudeTerminalResize) {
-                    window.electronAPI.claudeTerminalResize(cols, rows);
-                }
-            });
-        }
+            }
+        }, 100);
 
         // Resize terminal when container resizes
-        container.on('resize', () => {
+        function handleResize() {
             setTimeout(() => {
-                if (claudeTerminal.fit) {
+                if (isTerminalReady && claudeTerminal && claudeTerminal.fit) {
                     claudeTerminal.fit();
                 }
             }, 50);
-        });
+        }
+        
+        container.on('resize', handleResize);
+
+        // Cleanup function
+        cleanupFunctions[componentId] = function() {
+            isTerminalReady = false;
+            if (contentInstances.claudeTerminals[componentId]) {
+                contentInstances.claudeTerminals[componentId].dispose();
+                delete contentInstances.claudeTerminals[componentId];
+            }
+            container.off('resize', handleResize);
+        };
     }
 
-    function initializeEditorComponent(container, componentState) {
-        const paneId = 'editor-' + Date.now();
+    function initializeEditorComponent(container, componentState, componentId) {
         const element = container.getElement();
         
+        // Set the container to use flex layout
         element.css({
+            display: 'flex',
+            flexDirection: 'row',
             height: '100%',
-            width: '100%',
-            display: 'flex'
+            width: '100%'
         });
         
         element.html(`
-            <div class="editor-sidebar" style="width: 250px; border-right: 1px solid #333;">
+            <div class="editor-sidebar" style="width: 250px; border-right: 1px solid #333; height: 100%;">
                 <div class="sidebar-header" style="padding: 8px; border-bottom: 1px solid #333;">
-                    <h4 style="margin: 0; font-size: 14px;">Explorer</h4>
-                    <button class="refresh-btn" title="Refresh" style="float: right; background: none; border: none; color: #fff; cursor: pointer;">⟳</button>
+                    <h4 style="margin: 0; font-size: 14px; color: #cccccc;">Explorer</h4>
+                    <button class="refresh-btn" title="Refresh" style="float: right; background: none; border: none; color: #cccccc; cursor: pointer;">⟳</button>
                 </div>
-                <div class="file-tree" id="file-tree-${paneId}" style="padding: 8px; overflow-y: auto; height: calc(100% - 40px);">
+                <div class="file-tree" id="file-tree-${componentId}" style="padding: 8px; overflow-y: auto; height: calc(100% - 40px);">
                     <div class="loading">Loading files...</div>
                 </div>
             </div>
-            <div id="editor-${paneId}" class="editor-main" style="flex: 1; height: 100%;"></div>
+            <div id="editor-${componentId}" class="editor-main" style="flex: 1; height: 100%; display: flex; flex-direction: column;"></div>
         `);
 
-        const sidebar = element.find('.editor-sidebar')[0];
-        const editorDiv = element.find(`#editor-${paneId}`)[0];
-        const fileTree = element.find(`#file-tree-${paneId}`)[0];
+        const editorDiv = element.find(`#editor-${componentId}`)[0];
+        const fileTree = element.find(`#file-tree-${componentId}`)[0];
         const refreshBtn = element.find('.refresh-btn')[0];
 
         // Load file tree
-        loadFileTree(paneId, fileTree);
+        loadFileTree(componentId, fileTree);
         
         // Add refresh button functionality
-        refreshBtn.addEventListener('click', () => loadFileTree(paneId, fileTree));
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => loadFileTree(componentId, fileTree));
+        }
+        
+        let editor = null;
         
         // Initialize CodeMirror
         loadCodeMirror(() => {
-            const editor = CodeMirror(editorDiv, {
-                value: `;; Editor in ${paneId}\n;; Select a file from the explorer to edit\n(println "Hello from Octo!")`,
-                mode: 'clojure',
-                theme: 'dracula',
-                lineNumbers: true,
-                autoCloseBrackets: true,
-                matchBrackets: true,
-                indentUnit: 2,
-                tabSize: 2,
-                viewportMargin: Infinity
-            });
+            console.log('Attempting to initialize CodeMirror for', componentId);
+            console.log('editorDiv exists:', !!editorDiv);
+            console.log('editorDiv offsetParent:', editorDiv?.offsetParent);
             
-            // Force refresh when container resizes
-            container.on('resize', () => {
-                setTimeout(() => {
+            // Try to initialize even if not immediately visible
+            if (editorDiv) {
+                try {
+                    editor = CodeMirror(editorDiv, {
+                        value: `;; Editor in ${componentId}\n;; Select a file from the explorer to edit\n(println "Hello from Octo!")`,
+                        mode: 'clojure',
+                        theme: 'dracula',
+                        lineNumbers: true,
+                        autoCloseBrackets: true,
+                        matchBrackets: true,
+                        indentUnit: 2,
+                        tabSize: 2,
+                        viewportMargin: Infinity
+                    });
+                    
+                    contentInstances.editors[componentId] = { editor, fileTree };
+                    console.log('CodeMirror editor successfully initialized for', componentId);
+                    console.log('Editor instance stored:', contentInstances.editors[componentId]);
+                    
+                    // Refresh the editor after a brief delay to ensure it's rendered properly
+                    setTimeout(() => {
+                        if (editor) {
+                            editor.refresh();
+                            editor.setSize(null, '100%');
+                            console.log('Editor refreshed and sized');
+                        }
+                    }, 100);
+                    
+                    // Also refresh when the tab becomes active
+                    setTimeout(() => {
+                        if (editor) {
+                            editor.refresh();
+                            editor.setSize(null, '100%');
+                        }
+                    }, 500);
+                } catch (error) {
+                    console.error('Failed to initialize CodeMirror:', error);
+                }
+            } else {
+                console.error('editorDiv not found for', componentId);
+            }
+        });
+        
+        // Force refresh when container resizes
+        function handleResize() {
+            setTimeout(() => {
+                if (editor) {
                     editor.refresh();
                     editor.setSize(null, '100%');
-                }, 10);
-            });
-            
-            contentInstances.editors[paneId] = { editor, fileTree };
-            console.log('CodeMirror editor initialized for', paneId);
-        });
+                }
+            }, 10);
+        }
+        
+        container.on('resize', handleResize);
+
+        // Cleanup function
+        cleanupFunctions[componentId] = function() {
+            if (contentInstances.editors[componentId]) {
+                if (contentInstances.editors[componentId].editor) {
+                    // CodeMirror cleanup
+                    const cmElement = contentInstances.editors[componentId].editor.getWrapperElement();
+                    if (cmElement && cmElement.parentNode) {
+                        cmElement.parentNode.removeChild(cmElement);
+                    }
+                }
+                delete contentInstances.editors[componentId];
+            }
+            container.off('resize', handleResize);
+        };
     }
 
-    // Helper functions
+    // Helper functions (keeping existing implementations)
     function loadCodeMirror(callback) {
         if (window.CodeMirror) {
             callback();
@@ -506,9 +772,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function openFile(filePath, paneId) {
+        console.log('openFile called:', filePath, paneId);
+        console.log('Available editors:', Object.keys(contentInstances.editors));
+        
         try {
             const content = await window.electronAPI.readTextFile(filePath);
-            const editorInstance = contentInstances.editors[paneId];
+            let editorInstance = contentInstances.editors[paneId];
+            
+            // If the specific paneId doesn't exist, try to use any available editor
+            if (!editorInstance || !editorInstance.editor) {
+                console.warn('Specific editor not found, trying any available editor');
+                const availableEditors = Object.values(contentInstances.editors).filter(e => e && e.editor);
+                if (availableEditors.length > 0) {
+                    editorInstance = availableEditors[0];
+                    console.log('Using fallback editor');
+                }
+            }
+            
+            console.log('Editor instance found:', !!editorInstance);
+            console.log('Editor object:', !!editorInstance?.editor);
+            
             if (editorInstance && editorInstance.editor) {
                 editorInstance.editor.setValue(content);
                 
@@ -526,7 +809,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 editorInstance.editor.setOption('mode', mode);
                 
-                console.log(`Opened file: ${filePath}`);
+                // Force refresh and focus to make the content visible
+                setTimeout(() => {
+                    editorInstance.editor.refresh();
+                    editorInstance.editor.focus();
+                    editorInstance.editor.setSize(null, '100%');
+                }, 50);
+                
+                console.log(`Successfully opened file: ${filePath} with mode: ${mode}`);
+            } else {
+                console.error('No editor available to open file');
+                console.error('Requested paneId:', paneId);
+                console.error('Available editor instances:', contentInstances.editors);
+                alert('No editor available to open the file. Please make sure the Editor tab is loaded.');
             }
         } catch (error) {
             console.error('Error opening file:', error);
@@ -561,7 +856,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (files && files.length > 0) {
                     const level = (directoryItem.style.paddingLeft.replace('px', '') - 8) / 16 + 1;
                     const subContainer = document.createElement('div');
-                    const editorInstance = contentInstances.editors[paneId];
                     renderFileTree(files, subContainer, paneId, level);
                     
                     // Insert after the directory item

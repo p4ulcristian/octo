@@ -297,10 +297,34 @@ body {
     height: 100% !important;
     flex: 1;
     font-size: 14px;
+    border: 1px solid #3e3e42;
 }
 
 .CodeMirror-scroll {
     height: 100% !important;
+}
+
+.CodeMirror-lines {
+    padding: 4px 0;
+}
+
+.editor-main {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    height: 100% !important;
+}
+
+/* Ensure the editor sidebar and main area are side by side */
+.lm_content {
+    display: flex !important;
+    flex-direction: row !important;
+}
+
+.editor-sidebar {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 /* Terminal Styles */
