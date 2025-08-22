@@ -10,54 +10,25 @@
 </head>
 <body>
     <div class="container">
-        <div class="top-bar">
-            <button class="top-tab-btn active" data-pane="editor">Editor</button>
-            <button class="top-tab-btn" data-pane="terminal">Terminal</button>
-            <button class="top-tab-btn" data-pane="claude">Claude</button>
-            <button class="top-tab-btn" data-pane="preview">Preview</button>
-        </div>
-
         <main class="main-container" id="main-container">
             <!-- Editor Pane -->
             <div class="pane active" id="editor-pane">
-                <div class="file-tree">
-                    <div class="tree-item">📁 src/</div>
-                    <div class="tree-item indent">📄 main.js</div>
-                    <div class="tree-item indent">📄 renderer.js</div>
-                    <div class="tree-item indent">📄 style.css</div>
-                    <div class="tree-item">📁 node_modules/</div>
-                    <div class="tree-item">📄 package.json</div>
-                    <div class="tree-item">📄 index.html</div>
+                <div class="pane" id="editor-top-pane">
                 </div>
-                <div id="codemirror-editor"></div>
+                <div class="pane" id="editor-bottom-pane">
+                </div>
             </div>
 
-            <!-- Terminal Pane -->
-            <div class="pane" id="terminal-pane">
-                <div id="xterm-terminal"></div>
+            <!-- Combined Terminal and Claude Pane -->
+            <div class="pane active" id="terminal-claude-pane">
+                <div class="pane" id="claude-pane">
+                </div>
+                <div class="pane" id="terminal-pane">
+                </div>
             </div>
 
-            <!-- Claude Pane -->
-            <div class="pane" id="claude-pane">
-                <div id="claude-terminal"></div>
-            </div>
-
-            <!-- Preview Pane (Browser) -->
+            <!-- Preview Pane -->
             <div class="pane" id="preview-pane">
-                <div class="browser-controls">
-                    <button id="back-btn" class="btn-icon" title="Back">←</button>
-                    <button id="forward-btn" class="btn-icon" title="Forward">→</button>
-                    <button id="refresh-btn" class="btn-icon" title="Refresh">⟳</button>
-                    <input type="text" id="url-bar" value="https://localhost/customize" placeholder="Enter URL...">
-                    <button id="go-btn" class="btn btn-primary">Go</button>
-                    <button id="devtools-btn" class="btn btn-secondary">DevTools</button>
-                </div>
-                <div id="browser-mount" class="browser-mount">
-                    <!-- BrowserView will be positioned here -->
-                    <div class="browser-placeholder">
-                        <p>Loading browser...</p>
-                    </div>
-                </div>
             </div>
         </main>
 

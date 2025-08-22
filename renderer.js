@@ -8,44 +8,107 @@ window.addEventListener('load', () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize Split.js with simple approach
-    let splitInstance = null;
+    // Initialize Split.js with nested approach
+    let mainSplitInstance = null;
+    let editorSplitInstance = null;
+    let terminalClaudeSplitInstance = null;
     
     function initializeSplit() {
         if (typeof Split !== 'undefined') {
             console.log('Initializing Split.js...');
             
-            // Destroy existing instance
-            if (splitInstance) {
-                splitInstance.destroy();
-                splitInstance = null;
+            // Destroy existing instances
+            if (mainSplitInstance) {
+                mainSplitInstance.destroy();
+                mainSplitInstance = null;
+            }
+            if (editorSplitInstance) {
+                editorSplitInstance.destroy();
+                editorSplitInstance = null;
+            }
+            if (terminalClaudeSplitInstance) {
+                terminalClaudeSplitInstance.destroy();
+                terminalClaudeSplitInstance = null;
             }
             
-            // Get visible panes
-            const activePanes = document.querySelectorAll('.pane.active');
-            console.log('Active panes:', activePanes.length);
+            // Get main visible panes (excluding nested ones)
+            const mainPanes = document.querySelectorAll('.main-container > .pane.active');
+            console.log('Main panes:', mainPanes.length);
             
-            if (activePanes.length > 1) {
-                const paneIds = Array.from(activePanes).map(pane => `#${pane.id}`);
-                console.log('Split pane IDs:', paneIds);
+            if (mainPanes.length > 1) {
+                const paneIds = Array.from(mainPanes).map(pane => `#${pane.id}`);
+                console.log('Main split pane IDs:', paneIds);
                 
                 try {
-                    splitInstance = Split(paneIds, {
+                    // Main horizontal split
+                    mainSplitInstance = Split(paneIds, {
                         sizes: Array(paneIds.length).fill(100 / paneIds.length),
                         minSize: Array(paneIds.length).fill(0),
                         gutterSize: 15,
                         cursor: 'col-resize',
                         onDragEnd: function(sizes) {
-                            console.log('Split drag ended, sizes:', sizes);
-                            setTimeout(updateBrowserMountBounds, 100);
+                            console.log('Main split drag ended, sizes:', sizes);
                         }
                     });
-                    console.log('Split.js initialized successfully');
+                    console.log('Main Split.js initialized successfully');
+                    
+                    // Nested vertical split for editor pane
+                    const editorPane = document.getElementById('editor-pane');
+                    const editorTopPane = document.getElementById('editor-top-pane');
+                    const editorBottomPane = document.getElementById('editor-bottom-pane');
+                    
+                    console.log('Editor pane:', editorPane);
+                    console.log('Editor top pane:', editorTopPane);
+                    console.log('Editor bottom pane:', editorBottomPane);
+                    console.log('Editor active?', editorPane && editorPane.classList.contains('active'));
+                    
+                    if (editorPane && editorPane.classList.contains('active') && editorTopPane && editorBottomPane) {
+                        editorSplitInstance = Split(['#editor-top-pane', '#editor-bottom-pane'], {
+                            sizes: [50, 50],
+                            minSize: [0, 0],
+                            gutterSize: 15,
+                            direction: 'vertical',
+                            cursor: 'row-resize',
+                            onDragEnd: function(sizes) {
+                                console.log('Editor split drag ended, sizes:', sizes);
+                            }
+                        });
+                        console.log('Editor Split.js initialized successfully');
+                    } else {
+                        console.log('Editor split not initialized - missing elements or not active');
+                    }
+                    
+                    // Nested vertical split for terminal-claude pane
+                    const terminalClaudePane = document.getElementById('terminal-claude-pane');
+                    const claudePane = document.getElementById('claude-pane');
+                    const terminalPane = document.getElementById('terminal-pane');
+                    
+                    console.log('Terminal-Claude pane:', terminalClaudePane);
+                    console.log('Claude pane:', claudePane);
+                    console.log('Terminal pane:', terminalPane);
+                    console.log('Terminal-Claude active?', terminalClaudePane && terminalClaudePane.classList.contains('active'));
+                    
+                    if (terminalClaudePane && terminalClaudePane.classList.contains('active') && claudePane && terminalPane) {
+                        terminalClaudeSplitInstance = Split(['#claude-pane', '#terminal-pane'], {
+                            sizes: [50, 50],
+                            minSize: [0, 0],
+                            gutterSize: 15,
+                            direction: 'vertical',
+                            cursor: 'row-resize',
+                            onDragEnd: function(sizes) {
+                                console.log('Terminal-Claude split drag ended, sizes:', sizes);
+                            }
+                        });
+                        console.log('Terminal-Claude Split.js initialized successfully');
+                    } else {
+                        console.log('Terminal-Claude split not initialized - missing elements or not active');
+                    }
+                    
                 } catch (error) {
                     console.error('Split.js error:', error);
                 }
             } else {
-                console.log('Only one pane active, no split needed');
+                console.log('Only one main pane active, no split needed');
             }
         }
     }
@@ -74,164 +137,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Handle top bar pane toggling
-    function initializePaneToggling() {
-        const topTabButtons = document.querySelectorAll('.top-tab-btn');
-        
-        console.log('Found top tab buttons:', topTabButtons.length);
-        
-        topTabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const targetPaneName = button.getAttribute('data-pane');
-                const targetPane = document.querySelector(`#${targetPaneName}-pane`);
-                
-                console.log('Pane button clicked:', targetPaneName);
-                
-                if (targetPane) {
-                    // Toggle the pane visibility
-                    const isActive = targetPane.classList.contains('active');
-                    
-                    if (isActive) {
-                        // Turn off pane
-                        targetPane.classList.remove('active');
-                        button.classList.remove('active');
-                        console.log('Turned off pane:', targetPaneName);
-                    } else {
-                        // Turn on pane
-                        targetPane.classList.add('active');
-                        button.classList.add('active');
-                        console.log('Turned on pane:', targetPaneName);
-                    }
-                    
-                    // Reinitialize split after layout change
-                    setTimeout(() => {
-                        initializeSplit();
-                        updateBrowserMountBounds();
-                    }, 100);
-                } else {
-                    console.log('Target pane not found for:', targetPaneName);
-                }
-            });
-        });
-    }
-    
-    // Initialize pane toggling
-    initializePaneToggling();
+    // No pane toggling needed - all panes are always visible
 
-    // File tree click handlers
-    function initializeFileTree() {
-        const fileItems = document.querySelectorAll('.tree-item');
-        fileItems.forEach(item => {
-            // Only add click handlers to files (not folders)
-            if (item.textContent.includes('📄')) {
-                item.style.cursor = 'pointer';
-                item.addEventListener('click', async () => {
-                    const fileName = item.textContent.replace('📄 ', '').trim();
-                    
-                    // Ensure editor pane is visible
-                    const editorPane = document.querySelector('#editor-pane');
-                    const editorButton = document.querySelector('.top-tab-btn[data-pane="editor"]');
-                    if (editorPane && !editorPane.classList.contains('active')) {
-                        editorButton.click();
-                        
-                        // Wait a bit for editor to initialize, then load file
-                        setTimeout(async () => {
-                            if (window.codeMirrorEditor && window.electronAPI && window.electronAPI.readFile) {
-                                try {
-                                    const result = await window.electronAPI.readFile(fileName);
-                                    if (result.success) {
-                                        window.codeMirrorEditor.setValue(result.content);
-                                        console.log('File loaded:', fileName);
-                                        
-                                        // Show status
-                                        const statusEl = document.querySelector('footer span');
-                                        if (statusEl) {
-                                            const originalText = statusEl.textContent;
-                                            statusEl.textContent = `Opened: ${fileName}`;
-                                            setTimeout(() => {
-                                                statusEl.textContent = originalText;
-                                            }, 2000);
-                                        }
-                                    } else {
-                                        console.error('Failed to load file:', result.error);
-                                    }
-                                } catch (error) {
-                                    console.error('Error loading file:', error);
-                                }
-                            }
-                        }, 500);
-                    }
-                });
-            }
-        });
-    }
-    
-    // Initialize file tree
-    initializeFileTree();
+    // File tree removed - editor pane is now empty
 
-    // Browser controls
-    const urlBar = document.getElementById('url-bar');
-    const goBtn = document.getElementById('go-btn');
-    const backBtn = document.getElementById('back-btn');
-    const forwardBtn = document.getElementById('forward-btn');
-    const refreshBtn = document.getElementById('refresh-btn');
-    const devToolsBtn = document.getElementById('devtools-btn');
-
-    if (goBtn) {
-        goBtn.addEventListener('click', () => {
-            const url = urlBar.value.trim();
-            if (window.electronAPI && window.electronAPI.navigateBrowser) {
-                window.electronAPI.navigateBrowser(url);
-            }
-        });
-    }
-
-    if (backBtn) {
-        backBtn.addEventListener('click', () => {
-            if (window.electronAPI && window.electronAPI.browserBack) {
-                window.electronAPI.browserBack();
-            }
-        });
-    }
-
-    if (forwardBtn) {
-        forwardBtn.addEventListener('click', () => {
-            if (window.electronAPI && window.electronAPI.browserForward) {
-                window.electronAPI.browserForward();
-            }
-        });
-    }
-
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-            if (window.electronAPI && window.electronAPI.browserRefresh) {
-                window.electronAPI.browserRefresh();
-            }
-        });
-    }
-
-    if (devToolsBtn) {
-        devToolsBtn.addEventListener('click', () => {
-            if (window.electronAPI && window.electronAPI.browserDevTools) {
-                window.electronAPI.browserDevTools();
-            }
-        });
-    }
-
-    if (urlBar) {
-        urlBar.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && goBtn) {
-                goBtn.click();
-            }
-        });
-    }
-
-    // Listen for browser navigation
-    if (window.electronAPI && window.electronAPI.onBrowserNavigated) {
-        window.electronAPI.onBrowserNavigated((url) => {
-            if (urlBar) urlBar.value = url;
-        });
-    }
+    // Browser controls removed - preview pane is now empty
 
     // Update time in footer
     function updateTime() {
@@ -257,25 +167,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Function to update browser mount bounds
-    function updateBrowserMountBounds() {
-        const browserMount = document.getElementById('browser-mount');
-        if (browserMount && window.electronAPI && window.electronAPI.sendBrowserMountBounds) {
-            const rect = browserMount.getBoundingClientRect();
+    // Hide BrowserView by sending empty/invisible bounds
+    function hideBrowserView() {
+        if (window.electronAPI && window.electronAPI.sendBrowserMountBounds) {
             window.electronAPI.sendBrowserMountBounds({
-                x: rect.left,
-                y: rect.top,
-                width: rect.width,
-                height: rect.height
+                x: -1000,
+                y: -1000,
+                width: 0,
+                height: 0
             });
         }
     }
 
-    // Send initial browser mount bounds
-    setTimeout(updateBrowserMountBounds, 100);
-
-    // Update bounds on window resize
-    window.addEventListener('resize', updateBrowserMountBounds);
+    // Hide browser view immediately
+    setTimeout(hideBrowserView, 100);
 
 
     // CodeMirror Editor
@@ -523,42 +428,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Initialize CodeMirror when editor pane is shown
-    const editorTabBtn = document.querySelector('.top-tab-btn[data-pane="editor"]');
-    if (editorTabBtn) {
-        editorTabBtn.addEventListener('click', () => {
-            setTimeout(() => {
-                if (!codeMirrorEditor) {
-                    initializeCodeMirror();
-                    codeMirrorEditor = true; // Mark as initialized
-                }
-            }, 100);
-        });
-    }
-    
-    // Initialize terminal when terminal pane is shown
-    const terminalTabBtn = document.querySelector('.top-tab-btn[data-pane="terminal"]');
-    if (terminalTabBtn) {
-        terminalTabBtn.addEventListener('click', () => {
-            setTimeout(() => {
-                if (!terminal) {
-                    initializeTerminal();
-                }
-            }, 100);
-        });
-    }
-    
-    // Initialize Claude terminal when Claude pane is shown
-    const claudeTabBtn = document.querySelector('.top-tab-btn[data-pane="claude"]');
-    if (claudeTabBtn) {
-        claudeTabBtn.addEventListener('click', () => {
-            setTimeout(() => {
-                if (!claudeTerminal) {
-                    initializeClaudeTerminal();
-                }
-            }, 100);
-        });
-    }
+    // All panes are empty - no components to initialize
 
     console.log('Application initialized');
 });

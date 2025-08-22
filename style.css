@@ -18,35 +18,6 @@ body {
     flex-direction: column;
 }
 
-.top-bar {
-    background: #2d2d30;
-    border-bottom: 1px solid #3e3e42;
-    display: flex;
-    padding: 0;
-    height: 35px;
-}
-
-.top-tab-btn {
-    background: none;
-    border: none;
-    color: #cccccc;
-    padding: 8px 16px;
-    cursor: pointer;
-    font-size: 13px;
-    border-right: 1px solid #3e3e42;
-    transition: background-color 0.2s;
-}
-
-.top-tab-btn:hover {
-    background: #37373d;
-}
-
-.top-tab-btn.active {
-    background: #1e1e1e;
-    color: #ffffff;
-    border-bottom: 2px solid #0e639c;
-}
-
 header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -68,6 +39,7 @@ header h1 {
     flex: 1;
     display: flex;
     overflow: hidden;
+    height: 100vh;
 }
 
 .splitpanes {
@@ -83,8 +55,27 @@ header h1 {
     overflow: hidden;
 }
 
-.pane:not(.active) {
-    display: none !important;
+
+#editor-pane {
+    height: 100%;
+    width: 100%;
+}
+
+#editor-top-pane, #editor-bottom-pane {
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    overflow: hidden;
+}
+
+#terminal-claude-pane {
+    height: 100%;
+    width: 100%;
+}
+
+#claude-pane, #terminal-pane {
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    overflow: hidden;
 }
 
 /* Splitpanes splitter customization */
@@ -329,50 +320,6 @@ header h1 {
     width: 100%;
 }
 
-/* Browser Styles */
-.browser-controls {
-    display: flex;
-    gap: 5px;
-    padding: 8px;
-    background: #f8f8f8;
-    border-bottom: 1px solid #ddd;
-    align-items: center;
-}
-
-#url-bar {
-    flex: 1;
-    padding: 5px 10px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    font-size: 13px;
-}
-
-#url-bar:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.browser-container {
-    flex: 1;
-    background: #f0f0f0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.browser-mount {
-    flex: 1;
-    position: relative;
-    background: #f9f9f9;
-    border: 2px dashed #ccc;
-    height: 100%;
-}
-
-.browser-placeholder {
-    text-align: center;
-    color: #999;
-}
 
 /* Buttons */
 .btn {
