@@ -2,550 +2,175 @@
 window.addEventListener('load', () => {
     console.log('Window loaded - Terminal available:', typeof Terminal);
     console.log('window.Terminal:', window.Terminal);
-    console.log('AppBundle:', typeof AppBundle);
-    console.log('TestBundle:', window.TestBundle);
+    console.log('Golden Layout available:', typeof GoldenLayout);
     console.log('All scripts loaded');
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize Split.js with nested approach
-    let mainSplitInstance = null;
-    let editorSplitInstance = null;
-    let terminalClaudeSplitInstance = null;
-    
-    function initializeSplit() {
-        if (typeof Split !== 'undefined') {
-            console.log('Initializing Split.js...');
-            
-            // Destroy existing instances
-            if (mainSplitInstance) {
-                mainSplitInstance.destroy();
-                mainSplitInstance = null;
-            }
-            if (editorSplitInstance) {
-                editorSplitInstance.destroy();
-                editorSplitInstance = null;
-            }
-            if (terminalClaudeSplitInstance) {
-                terminalClaudeSplitInstance.destroy();
-                terminalClaudeSplitInstance = null;
-            }
-            
-            // Get main visible panes (excluding nested ones)
-            const mainPanes = document.querySelectorAll('.main-container > .pane.active');
-            console.log('Main panes:', mainPanes.length);
-            
-            if (mainPanes.length > 1) {
-                const paneIds = Array.from(mainPanes).map(pane => `#${pane.id}`);
-                console.log('Main split pane IDs:', paneIds);
-                
-                try {
-                    // Main horizontal split
-                    mainSplitInstance = Split(paneIds, {
-                        sizes: Array(paneIds.length).fill(100 / paneIds.length),
-                        minSize: Array(paneIds.length).fill(0),
-                        gutterSize: 15,
-                        cursor: 'col-resize',
-                        onDragEnd: function(sizes) {
-                            console.log('Main split drag ended, sizes:', sizes);
-                            setTimeout(updateAllBrowserMounts, 100);
-                        }
-                    });
-                    console.log('Main Split.js initialized successfully');
-                    
-                    // Nested vertical split for editor pane
-                    const editorPane = document.getElementById('editor-pane');
-                    const editorTopPane = document.getElementById('editor-top-pane');
-                    const editorBottomPane = document.getElementById('editor-bottom-pane');
-                    
-                    console.log('Editor pane:', editorPane);
-                    console.log('Editor top pane:', editorTopPane);
-                    console.log('Editor bottom pane:', editorBottomPane);
-                    console.log('Editor active?', editorPane && editorPane.classList.contains('active'));
-                    
-                    if (editorPane && editorPane.classList.contains('active') && editorTopPane && editorBottomPane) {
-                        editorSplitInstance = Split(['#editor-top-pane', '#editor-bottom-pane'], {
-                            sizes: [50, 50],
-                            minSize: [0, 0],
-                            gutterSize: 15,
-                            direction: 'vertical',
-                            cursor: 'row-resize',
-                            onDragEnd: function(sizes) {
-                                console.log('Editor split drag ended, sizes:', sizes);
-                                setTimeout(updateAllBrowserMounts, 100);
-                            }
-                        });
-                        console.log('Editor Split.js initialized successfully');
-                    } else {
-                        console.log('Editor split not initialized - missing elements or not active');
-                    }
-                    
-                    // Nested vertical split for terminal-claude pane
-                    const terminalClaudePane = document.getElementById('terminal-claude-pane');
-                    const claudePane = document.getElementById('claude-pane');
-                    const terminalPane = document.getElementById('terminal-pane');
-                    
-                    console.log('Terminal-Claude pane:', terminalClaudePane);
-                    console.log('Claude pane:', claudePane);
-                    console.log('Terminal pane:', terminalPane);
-                    console.log('Terminal-Claude active?', terminalClaudePane && terminalClaudePane.classList.contains('active'));
-                    
-                    if (terminalClaudePane && terminalClaudePane.classList.contains('active') && claudePane && terminalPane) {
-                        terminalClaudeSplitInstance = Split(['#claude-pane', '#terminal-pane'], {
-                            sizes: [50, 50],
-                            minSize: [0, 0],
-                            gutterSize: 15,
-                            direction: 'vertical',
-                            cursor: 'row-resize',
-                            onDragEnd: function(sizes) {
-                                console.log('Terminal-Claude split drag ended, sizes:', sizes);
-                                setTimeout(updateAllBrowserMounts, 100);
-                            }
-                        });
-                        console.log('Terminal-Claude Split.js initialized successfully');
-                    } else {
-                        console.log('Terminal-Claude split not initialized - missing elements or not active');
-                    }
-                    
-                } catch (error) {
-                    console.error('Split.js error:', error);
-                }
-            } else {
-                console.log('Only one main pane active, no split needed');
-            }
-        }
-    }
-    
-    // Initialize split on load
-    setTimeout(initializeSplit, 200);
-
-    // Load system information
-    if (window.electronAPI) {
-        try {
-            const versions = window.electronAPI.getVersions();
-            const appVersion = await window.electronAPI.getAppVersion();
-            
-            // Update version displays if elements exist
-            const nodeEl = document.getElementById('node-version');
-            const chromeEl = document.getElementById('chrome-version');
-            const electronEl = document.getElementById('electron-version');
-            const appEl = document.getElementById('app-version');
-            
-            if (nodeEl) nodeEl.textContent = versions.node;
-            if (chromeEl) chromeEl.textContent = versions.chrome;
-            if (electronEl) electronEl.textContent = versions.electron;
-            if (appEl) appEl.textContent = appVersion;
-        } catch (error) {
-            console.error('Error loading system info:', error);
-        }
-    }
-
-    // No pane toggling needed - all panes are always visible
-
-    // File tree removed - editor pane is now empty
-
-    // Browser controls removed - preview pane is now empty
-
-    // Update time in footer
-    function updateTime() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString();
-        const timeEl = document.getElementById('current-time');
-        if (timeEl) timeEl.textContent = timeString;
-    }
-
-    updateTime();
-    setInterval(updateTime, 1000);
-
-    // Terminal input handling
-    const terminalInput = document.querySelector('.terminal-input');
-    if (terminalInput) {
-        terminalInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const command = e.target.value;
-                console.log('Terminal command:', command);
-                // Here you would handle the terminal command
-                e.target.value = '';
-            }
-        });
-    }
-
-    // Function to update active browser mount bounds
-    function updateAllBrowserMounts() {
-        Object.values(contentInstances.previews).forEach(preview => {
-            if (preview && preview.updateBounds && preview.browserMount && preview.browserMount.classList.contains('active-browser-mount')) {
-                preview.updateBounds();
-            }
-        });
-    }
-
-    // Add window resize listener to update browser mounts
-    window.addEventListener('resize', () => {
-        setTimeout(updateAllBrowserMounts, 100);
-    });
-
-
-    // CodeMirror Editor
-    let codeMirrorEditor = null;
-
-    // Initialize xterm.js terminal
-    let terminal = null;
-    let claudeTerminal = null;
-    
-    function initializeTerminal() {
-        const terminalElement = document.getElementById('xterm-terminal');
-        terminal = new Terminal({
-            cols: 80,
-            rows: 24,
-            fontSize: 14,
-            fontFamily: 'Consolas, "Courier New", monospace',
-            theme: {
-                background: '#1e1e1e',
-                foreground: '#ffffff'
-            }
-        });
-        terminal.open(terminalElement);
-        
-        // Start the terminal process
-        if (window.electronAPI && window.electronAPI.terminalStart) {
-            window.electronAPI.terminalStart().then(() => {
-                console.log('Terminal process started');
-            }).catch(error => {
-                console.error('Failed to start terminal:', error);
-                terminal.write('Failed to start terminal process\r\n');
-            });
-            
-            // Listen for output from the terminal process
-            window.electronAPI.onTerminalOutput((data) => {
-                terminal.write(data);
-            });
-            
-            // Send input directly to PTY (no local echo needed)
-            terminal.onData(data => {
-                if (window.electronAPI && window.electronAPI.terminalWrite) {
-                    window.electronAPI.terminalWrite(data);
-                }
-            });
-            
-            // Handle terminal resize
-            terminal.onResize(({ cols, rows }) => {
-                if (window.electronAPI && window.electronAPI.terminalResize) {
-                    window.electronAPI.terminalResize(cols, rows);
-                }
-            });
-        } else {
-            // Fallback to echo mode if no terminal API
-            terminal.write('Terminal API not available - echo mode\r\n$ ');
-            let currentLine = '';
-            terminal.onData(data => {
-                if (data === '\r') {
-                    terminal.write('\r\n');
-                    if (currentLine.trim()) {
-                        terminal.write(`You typed: ${currentLine}\r\n`);
-                    }
-                    currentLine = '';
-                    terminal.write('$ ');
-                } else if (data === '\u007f') {
-                    if (currentLine.length > 0) {
-                        currentLine = currentLine.slice(0, -1);
-                        terminal.write('\b \b');
-                    }
-                } else {
-                    currentLine += data;
-                    terminal.write(data);
-                }
-            });
-        }
-    }
-
-    // Initialize CodeMirror Editor
-    function initializeCodeMirror() {
-        const editorContainer = document.getElementById('codemirror-editor');
-        if (editorContainer && !codeMirrorEditor) {
-            // Load CodeMirror 5 (simpler, no modules needed)
-            const cssLink = document.createElement('link');
-            cssLink.rel = 'stylesheet';
-            cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css';
-            document.head.appendChild(cssLink);
-            
-            const themeCss = document.createElement('link');
-            themeCss.rel = 'stylesheet';
-            themeCss.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css';
-            document.head.appendChild(themeCss);
-            
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js';
-            script.onload = () => {
-                const jsMode = document.createElement('script');
-                jsMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js';
-                jsMode.onload = () => {
-                    window.codeMirrorEditor = CodeMirror(editorContainer, {
-                        value: 'function hello() {\n  console.log("Hello CodeMirror!");\n}',
-                        mode: 'javascript',
-                        theme: 'dracula',
-                        lineNumbers: true,
-                        autoCloseBrackets: true,
-                        matchBrackets: true,
-                        indentUnit: 2,
-                        tabSize: 2,
-                        extraKeys: {
-                            'Ctrl-S': function(cm) {
-                                saveFile(cm);
-                            },
-                            'Cmd-S': function(cm) {
-                                saveFile(cm);
-                            },
-                            'Ctrl-O': function(cm) {
-                                loadFile(cm);
-                            },
-                            'Cmd-O': function(cm) {
-                                loadFile(cm);
-                            }
-                        }
-                    });
-                    console.log('CodeMirror editor created successfully');
-                    
-                    // File operations
-                    async function saveFile(editor) {
-                        const content = editor.getValue();
-                        if (window.electronAPI && window.electronAPI.writeFile) {
-                            try {
-                                const result = await window.electronAPI.writeFile('/tmp/codemirror-file.js', content);
-                                if (result.success) {
-                                    console.log('File saved successfully');
-                                    // Show status in footer
-                                    const statusEl = document.querySelector('footer span');
-                                    if (statusEl) {
-                                        const originalText = statusEl.textContent;
-                                        statusEl.textContent = 'File saved';
-                                        setTimeout(() => {
-                                            statusEl.textContent = originalText;
-                                        }, 2000);
-                                    }
-                                } else {
-                                    console.error('Failed to save file:', result.error);
-                                }
-                            } catch (error) {
-                                console.error('Error saving file:', error);
-                            }
-                        }
-                    }
-                    
-                    async function loadFile(editor) {
-                        if (window.electronAPI && window.electronAPI.readFile) {
-                            try {
-                                const result = await window.electronAPI.readFile('/tmp/codemirror-file.js');
-                                if (result.success) {
-                                    editor.setValue(result.content);
-                                    console.log('File loaded successfully');
-                                    // Show status in footer
-                                    const statusEl = document.querySelector('footer span');
-                                    if (statusEl) {
-                                        const originalText = statusEl.textContent;
-                                        statusEl.textContent = 'File loaded';
-                                        setTimeout(() => {
-                                            statusEl.textContent = originalText;
-                                        }, 2000);
-                                    }
-                                } else {
-                                    console.error('Failed to load file:', result.error);
-                                    // Try to create new file if it doesn't exist
-                                    editor.setValue('// New file\nfunction hello() {\n  console.log("Hello CodeMirror!");\n}');
-                                }
-                            } catch (error) {
-                                console.error('Error loading file:', error);
-                            }
-                        }
-                    }
-                };
-                document.head.appendChild(jsMode);
-            };
-            document.head.appendChild(script);
-        }
-    }
-
-    function initializeClaudeTerminal() {
-        const claudeTerminalElement = document.getElementById('claude-terminal');
-        claudeTerminal = new Terminal({
-            cols: 80,
-            rows: 24,
-            fontSize: 14,
-            fontFamily: 'Consolas, "Courier New", monospace',
-            theme: {
-                background: '#1e1e1e',
-                foreground: '#ffffff'
-            }
-        });
-        claudeTerminal.open(claudeTerminalElement);
-        
-        // Start the Claude terminal process
-        if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
-            window.electronAPI.claudeTerminalStart().then(() => {
-                console.log('Claude terminal process started');
-            }).catch(error => {
-                console.error('Failed to start Claude terminal:', error);
-                claudeTerminal.write('Failed to start Claude terminal process\\r\\n');
-            });
-            
-            // Listen for output from the Claude terminal process
-            window.electronAPI.onClaudeTerminalOutput((data) => {
-                claudeTerminal.write(data);
-            });
-            
-            // Send input directly to PTY (no local echo needed)
-            claudeTerminal.onData(data => {
-                if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
-                    window.electronAPI.claudeTerminalWrite(data);
-                }
-            });
-            
-            // Handle Claude terminal resize
-            claudeTerminal.onResize(({ cols, rows }) => {
-                if (window.electronAPI && window.electronAPI.claudeTerminalResize) {
-                    window.electronAPI.claudeTerminalResize(cols, rows);
-                }
-            });
-        } else {
-            // Fallback to echo mode if no terminal API
-            claudeTerminal.write('Claude Terminal API not available - echo mode\\r\\n$ ');
-            let currentLine = '';
-            claudeTerminal.onData(data => {
-                if (data === '\\r') {
-                    claudeTerminal.write('\\r\\n');
-                    if (currentLine.trim()) {
-                        claudeTerminal.write(`You typed: ${currentLine}\\r\\n`);
-                    }
-                    currentLine = '';
-                    claudeTerminal.write('$ ');
-                } else if (data === '\\u007f') {
-                    if (currentLine.length > 0) {
-                        currentLine = currentLine.slice(0, -1);
-                        claudeTerminal.write('\\b \\b');
-                    }
-                } else {
-                    currentLine += data;
-                    claudeTerminal.write(data);
-                }
-            });
-        }
-    }
-
-    // Content instances for each type
-    const contentInstances = {
+    let goldenLayout = null;
+    let contentInstances = {
         terminals: {},
         claudeTerminals: {},
         editors: {},
         previews: {}
     };
-    
-    // Active pane tracking
-    let activePaneId = null;
-    let activePaneType = null;
-    
-    function updateTopBar(paneId, contentType) {
-        const topBarElement = document.getElementById('active-pane-name');
-        if (topBarElement) {
-            const paneName = getPaneName(paneId);
-            const displayText = `${paneName} - ${contentType.charAt(0).toUpperCase() + contentType.slice(1)}`;
-            topBarElement.textContent = displayText;
-            activePaneId = paneId;
-            activePaneType = contentType;
-            
+
+    // Initialize Golden Layout
+    function initializeGoldenLayout() {
+        if (typeof GoldenLayout === 'undefined') {
+            console.error('Golden Layout not loaded');
+            return;
         }
-    }
-    
-    
-    function getPaneName(paneId) {
-        switch(paneId) {
-            case 'editor-top-pane': return 'Top Left';
-            case 'claude-pane': return 'Top Right';
-            case 'editor-bottom-pane': return 'Bottom Left';
-            case 'terminal-pane': return 'Bottom Right';
-            default: return paneId;
-        }
-    }
-    
-    function selectPane(paneId, contentType = null) {
-        // Remove selection from all panes
-        const allPanes = document.querySelectorAll('#editor-top-pane, #claude-pane, #editor-bottom-pane, #terminal-pane');
-        allPanes.forEach(pane => pane.classList.remove('selected'));
-        
-        // Select the clicked pane
-        const targetPane = document.getElementById(paneId);
-        if (targetPane) {
-            targetPane.classList.add('selected');
-            
-            // Update top bar with current content or default
-            const displayType = contentType || getActiveContentType(paneId) || 'Empty';
-            updateTopBar(paneId, displayType);
-        }
-    }
-    
-    function getActiveContentType(paneId) {
-        // Check what content is currently in the pane
-        if (contentInstances.terminals[paneId]) return 'terminal';
-        if (contentInstances.claudeTerminals[paneId]) return 'claude';
-        if (contentInstances.editors[paneId]) return 'editor';
-        if (contentInstances.previews[paneId]) return 'preview';
-        return null;
-    }
-    
-    function initializePaneClickHandlers() {
-        const panes = document.querySelectorAll('#editor-top-pane, #claude-pane, #editor-bottom-pane, #terminal-pane');
-        
-        panes.forEach(pane => {
-            pane.addEventListener('click', (e) => {
-                // Don't select if clicking on a circle button
-                if (e.target.closest('.circle')) return;
-                
-                selectPane(pane.id);
-            });
+
+        const config = {
+            settings: {
+                showPopoutIcon: false,
+                showMaximiseIcon: true,
+                showCloseIcon: false
+            },
+            content: [{
+                type: 'row',
+                content: [{
+                    type: 'column',
+                    width: 60,
+                    content: [{
+                        type: 'component',
+                        componentName: 'preview',
+                        componentState: { label: 'Browser' },
+                        title: 'Browser',
+                        height: 60
+                    }, {
+                        type: 'component',
+                        componentName: 'claude',
+                        componentState: { label: 'Claude' },
+                        title: 'Claude'
+                    }]
+                }, {
+                    type: 'column',
+                    content: [{
+                        type: 'component',
+                        componentName: 'terminal',
+                        componentState: { label: 'Terminal' },
+                        title: 'Terminal',
+                        height: 60
+                    }, {
+                        type: 'component',
+                        componentName: 'editor',
+                        componentState: { label: 'Editor' },
+                        title: 'Editor'
+                    }]
+                }]
+            }]
+        };
+
+        goldenLayout = new GoldenLayout(config, document.getElementById('golden-layout-container'));
+
+        // Register components
+        goldenLayout.registerComponent('preview', function(container, componentState) {
+            initializePreviewComponent(container, componentState);
         });
-    }
-    
-    // Add global click listener to detect clicks on browser areas
-    
-    // Initialize circle button functionality
-    function initializeCircleButtons() {
-        const circles = document.querySelectorAll('.circle');
+
+        goldenLayout.registerComponent('terminal', function(container, componentState) {
+            initializeTerminalComponent(container, componentState);
+        });
+
+        goldenLayout.registerComponent('claude', function(container, componentState) {
+            initializeClaudeComponent(container, componentState);
+        });
+
+        goldenLayout.registerComponent('editor', function(container, componentState) {
+            initializeEditorComponent(container, componentState);
+        });
+
+        goldenLayout.init();
         
-        circles.forEach(circle => {
-            circle.addEventListener('click', (e) => {
-                const contentType = e.target.getAttribute('data-type');
-                const pane = e.target.closest('.pane');
-                const paneId = pane.id;
+        console.log('Golden Layout initialized');
+    }
+
+    // Component initializers
+    function initializePreviewComponent(container, componentState) {
+        const paneId = 'preview-' + Date.now();
+        const element = container.getElement();
+        
+        element.css({
+            height: '100%',
+            width: '100%'
+        });
+        
+        element.html(`
+            <div id="preview-${paneId}" style="height: 100%; width: 100%;">
+                <div class="browser-mount" id="browser-mount-${paneId}" style="width: 100%; height: 100%; position: relative; background: #f9f9f9; border: 2px dashed #ccc; overflow: hidden; box-sizing: border-box;">
+                    <div class="browser-placeholder"><p>Loading browser...</p></div>
+                </div>
+            </div>
+        `);
+
+        const browserMount = element.find(`#browser-mount-${paneId}`)[0];
+        
+        // Browser mount bounds update function
+        function updateBrowserMountBounds() {
+            const rect = browserMount.getBoundingClientRect();
+            if (window.electronAPI && window.electronAPI.sendBrowserMountBounds && rect.width > 0 && rect.height > 0) {
+                const adjustedBounds = {
+                    x: Math.floor(rect.left + 2),
+                    y: Math.floor(rect.top + 2),
+                    width: Math.floor(rect.width - 4),
+                    height: Math.floor(rect.height - 4)
+                };
                 
-                console.log(`Selected ${contentType} for pane ${paneId}`);
-                
-                
-                // Clear the pane
-                pane.innerHTML = '';
-                
-                // Initialize the appropriate content
-                switch(contentType) {
-                    case 'terminal':
-                        initializeTerminalInPane(pane, paneId);
-                        break;
-                    case 'claude':
-                        initializeClaudeInPane(pane, paneId);
-                        break;
-                    case 'editor':
-                        initializeEditorInPane(pane, paneId);
-                        break;
-                    case 'preview':
-                        initializePreviewInPane(pane, paneId);
-                        break;
+                console.log(`Updating browser bounds for ${paneId}:`, adjustedBounds);
+                window.electronAPI.sendBrowserMountBounds(adjustedBounds);
+            }
+        }
+
+        // Clear any existing active browser mounts
+        Object.values(contentInstances.previews).forEach(preview => {
+            if (preview && preview.browserMount) {
+                preview.browserMount.classList.remove('active-browser-mount');
+            }
+        });
+
+        // Mark this as the active browser mount
+        browserMount.classList.add('active-browser-mount');
+        
+        // Update bounds after layout is ready
+        setTimeout(updateBrowserMountBounds, 500);
+        
+        // Listen for container resize
+        container.on('resize', () => {
+            setTimeout(updateBrowserMountBounds, 100);
+        });
+
+        contentInstances.previews[paneId] = { 
+            browserMount, 
+            updateBounds: updateBrowserMountBounds,
+            isActive: true
+        };
+
+        // Navigate to saved preview URL if available
+        const savedUrl = localStorage.getItem('octo-preview-url');
+        if (savedUrl && savedUrl.trim()) {
+            console.log('Navigating to saved preview URL:', savedUrl);
+            setTimeout(() => {
+                if (window.electronAPI && window.electronAPI.navigateBrowser) {
+                    window.electronAPI.navigateBrowser(savedUrl);
                 }
-            });
-        });
+            }, 1000);
+        }
     }
-    
-    function initializeTerminalInPane(pane, paneId) {
-        const terminalDiv = document.createElement('div');
-        terminalDiv.id = `terminal-${paneId}`;
-        terminalDiv.style.height = '100%';
-        terminalDiv.style.width = '100%';
-        pane.appendChild(terminalDiv);
+
+    function initializeTerminalComponent(container, componentState) {
+        const paneId = 'terminal-' + Date.now();
+        const element = container.getElement();
+        
+        element.css({
+            height: '100%',
+            width: '100%'
+        });
+        
+        element.html(`<div id="terminal-${paneId}" style="height: 100%; width: 100%;"></div>`);
+
+        const terminalDiv = element.find(`#terminal-${paneId}`)[0];
         
         const terminal = new Terminal({
             cols: 80,
@@ -577,55 +202,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                 terminal.write('Failed to start terminal process\r\n');
             });
             
-            // Listen for output from the terminal process
+            // Listen for output
             window.electronAPI.onTerminalOutput((data) => {
                 terminal.write(data);
             });
             
-            // Send input directly to PTY (no local echo needed)
+            // Send input
             terminal.onData(data => {
                 if (window.electronAPI && window.electronAPI.terminalWrite) {
                     window.electronAPI.terminalWrite(data);
                 }
             });
             
-            // Handle terminal resize
+            // Handle resize
             terminal.onResize(({ cols, rows }) => {
                 if (window.electronAPI && window.electronAPI.terminalResize) {
                     window.electronAPI.terminalResize(cols, rows);
                 }
             });
-        } else {
-            // Fallback to echo mode if no terminal API
-            terminal.write('Terminal API not available - echo mode\r\n$ ');
-            let currentLine = '';
-            terminal.onData(data => {
-                if (data === '\r') {
-                    terminal.write('\r\n');
-                    if (currentLine.trim()) {
-                        terminal.write(`You typed: ${currentLine}\r\n`);
-                    }
-                    currentLine = '';
-                    terminal.write('$ ');
-                } else if (data === '\u007f') {
-                    if (currentLine.length > 0) {
-                        currentLine = currentLine.slice(0, -1);
-                        terminal.write('\b \b');
-                    }
-                } else {
-                    currentLine += data;
-                    terminal.write(data);
-                }
-            });
         }
+
+        // Resize terminal when container resizes
+        container.on('resize', () => {
+            setTimeout(() => {
+                if (terminal.fit) {
+                    terminal.fit();
+                }
+            }, 50);
+        });
     }
-    
-    function initializeClaudeInPane(pane, paneId) {
-        const claudeDiv = document.createElement('div');
-        claudeDiv.id = `claude-${paneId}`;
-        claudeDiv.style.height = '100%';
-        claudeDiv.style.width = '100%';
-        pane.appendChild(claudeDiv);
+
+    function initializeClaudeComponent(container, componentState) {
+        const paneId = 'claude-' + Date.now();
+        const element = container.getElement();
+        
+        element.css({
+            height: '100%',
+            width: '100%'
+        });
+        
+        element.html(`<div id="claude-${paneId}" style="height: 100%; width: 100%;"></div>`);
+
+        const claudeDiv = element.find(`#claude-${paneId}`)[0];
         
         const claudeTerminal = new Terminal({
             cols: 80,
@@ -657,164 +275,105 @@ document.addEventListener('DOMContentLoaded', async () => {
                 claudeTerminal.write('Failed to start Claude terminal process\r\n');
             });
             
-            // Listen for output from the Claude terminal process
+            // Listen for output
             window.electronAPI.onClaudeTerminalOutput((data) => {
                 claudeTerminal.write(data);
             });
             
-            // Send input directly to PTY (no local echo needed)
+            // Send input
             claudeTerminal.onData(data => {
                 if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
                     window.electronAPI.claudeTerminalWrite(data);
                 }
             });
             
-            // Handle Claude terminal resize
+            // Handle resize
             claudeTerminal.onResize(({ cols, rows }) => {
                 if (window.electronAPI && window.electronAPI.claudeTerminalResize) {
                     window.electronAPI.claudeTerminalResize(cols, rows);
                 }
             });
-        } else {
-            // Fallback to echo mode if no terminal API
-            claudeTerminal.write('Claude Terminal API not available - echo mode\r\n$ ');
-            let currentLine = '';
-            claudeTerminal.onData(data => {
-                if (data === '\r') {
-                    claudeTerminal.write('\r\n');
-                    if (currentLine.trim()) {
-                        claudeTerminal.write(`You typed: ${currentLine}\r\n`);
-                    }
-                    currentLine = '';
-                    claudeTerminal.write('$ ');
-                } else if (data === '\u007f') {
-                    if (currentLine.length > 0) {
-                        currentLine = currentLine.slice(0, -1);
-                        claudeTerminal.write('\b \b');
-                    }
-                } else {
-                    currentLine += data;
-                    claudeTerminal.write(data);
-                }
-            });
         }
+
+        // Resize terminal when container resizes
+        container.on('resize', () => {
+            setTimeout(() => {
+                if (claudeTerminal.fit) {
+                    claudeTerminal.fit();
+                }
+            }, 50);
+        });
     }
-    
-    function initializeEditorInPane(pane, paneId) {
-        const editorContainer = document.createElement('div');
-        editorContainer.id = `editor-container-${paneId}`;
-        editorContainer.style.height = '100%';
-        editorContainer.style.width = '100%';
-        editorContainer.style.display = 'flex';
-        pane.appendChild(editorContainer);
+
+    function initializeEditorComponent(container, componentState) {
+        const paneId = 'editor-' + Date.now();
+        const element = container.getElement();
         
-        // Create file explorer sidebar
-        const sidebar = document.createElement('div');
-        sidebar.className = 'editor-sidebar';
-        sidebar.innerHTML = `
-            <div class="sidebar-header">
-                <h4>Explorer</h4>
-                <button class="refresh-btn" title="Refresh">⟳</button>
+        element.css({
+            height: '100%',
+            width: '100%',
+            display: 'flex'
+        });
+        
+        element.html(`
+            <div class="editor-sidebar" style="width: 250px; border-right: 1px solid #333;">
+                <div class="sidebar-header" style="padding: 8px; border-bottom: 1px solid #333;">
+                    <h4 style="margin: 0; font-size: 14px;">Explorer</h4>
+                    <button class="refresh-btn" title="Refresh" style="float: right; background: none; border: none; color: #fff; cursor: pointer;">⟳</button>
+                </div>
+                <div class="file-tree" id="file-tree-${paneId}" style="padding: 8px; overflow-y: auto; height: calc(100% - 40px);">
+                    <div class="loading">Loading files...</div>
+                </div>
             </div>
-            <div class="file-tree" id="file-tree-${paneId}">
-                <div class="loading">Loading files...</div>
-            </div>
-        `;
-        editorContainer.appendChild(sidebar);
-        
-        // Create editor area
-        const editorDiv = document.createElement('div');
-        editorDiv.id = `editor-${paneId}`;
-        editorDiv.className = 'editor-main';
-        editorDiv.style.flex = '1';
-        editorDiv.style.height = '100%';
-        editorContainer.appendChild(editorDiv);
-        
+            <div id="editor-${paneId}" class="editor-main" style="flex: 1; height: 100%;"></div>
+        `);
+
+        const sidebar = element.find('.editor-sidebar')[0];
+        const editorDiv = element.find(`#editor-${paneId}`)[0];
+        const fileTree = element.find(`#file-tree-${paneId}`)[0];
+        const refreshBtn = element.find('.refresh-btn')[0];
+
         // Load file tree
-        loadFileTree(paneId);
+        loadFileTree(paneId, fileTree);
         
         // Add refresh button functionality
-        const refreshBtn = sidebar.querySelector('.refresh-btn');
-        refreshBtn.addEventListener('click', () => loadFileTree(paneId));
+        refreshBtn.addEventListener('click', () => loadFileTree(paneId, fileTree));
         
-        // Create CodeMirror editor
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js';
-        script.onload = () => {
-            // Load multiple language modes
-            const jsMode = document.createElement('script');
-            jsMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js';
+        // Initialize CodeMirror
+        loadCodeMirror(() => {
+            const editor = CodeMirror(editorDiv, {
+                value: `;; Editor in ${paneId}\n;; Select a file from the explorer to edit\n(println "Hello from Octo!")`,
+                mode: 'clojure',
+                theme: 'dracula',
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 2,
+                tabSize: 2,
+                viewportMargin: Infinity
+            });
             
-            const clojureMode = document.createElement('script');
-            clojureMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clojure/clojure.min.js';
-            
-            const cssMode = document.createElement('script');
-            cssMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js';
-            
-            const xmlMode = document.createElement('script');
-            xmlMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js';
-            
-            let modesLoaded = 0;
-            const totalModes = 4;
-            
-            function onModeLoaded() {
-                modesLoaded++;
-                if (modesLoaded === totalModes) {
-                    initializeEditor();
-                }
-            }
-            
-            jsMode.onload = onModeLoaded;
-            clojureMode.onload = onModeLoaded;
-            cssMode.onload = onModeLoaded;
-            xmlMode.onload = onModeLoaded;
-            
-            document.head.appendChild(jsMode);
-            document.head.appendChild(clojureMode);
-            document.head.appendChild(cssMode);
-            document.head.appendChild(xmlMode);
-            
-            function initializeEditor() {
-                const editor = CodeMirror(editorDiv, {
-                    value: `;; Editor in ${paneId}\n;; Select a file from the explorer to edit\n(println "Hello from Octo!")`,
-                    mode: 'clojure',
-                    theme: 'dracula',
-                    lineNumbers: true,
-                    autoCloseBrackets: true,
-                    matchBrackets: true,
-                    indentUnit: 2,
-                    tabSize: 2,
-                    viewportMargin: Infinity,
-                    // Clojure-specific options
-                    autoCloseTags: true,
-                    showHint: true,
-                    electricChars: true
-                });
-                
-                // Force CodeMirror to refresh and take full height
+            // Force refresh when container resizes
+            container.on('resize', () => {
                 setTimeout(() => {
                     editor.refresh();
                     editor.setSize(null, '100%');
-                }, 100);
-                
-                // Add resize observer to refresh CodeMirror when pane is resized
-                if (window.ResizeObserver) {
-                    const resizeObserver = new ResizeObserver(() => {
-                        setTimeout(() => {
-                            editor.refresh();
-                            editor.setSize(null, '100%');
-                        }, 10);
-                    });
-                    resizeObserver.observe(editorDiv);
-                }
-                
-                contentInstances.editors[paneId] = editor;
-                console.log('CodeMirror editor initialized for', paneId);
-            }
-        };
-        document.head.appendChild(script);
-        
-        // Load CSS if not already loaded
+                }, 10);
+            });
+            
+            contentInstances.editors[paneId] = { editor, fileTree };
+            console.log('CodeMirror editor initialized for', paneId);
+        });
+    }
+
+    // Helper functions
+    function loadCodeMirror(callback) {
+        if (window.CodeMirror) {
+            callback();
+            return;
+        }
+
+        // Load CSS
         if (!document.querySelector('link[href*="codemirror.min.css"]')) {
             const cssLink = document.createElement('link');
             cssLink.rel = 'stylesheet';
@@ -826,108 +385,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             themeCss.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css';
             document.head.appendChild(themeCss);
         }
-    }
-    
-    function initializePreviewInPane(pane, paneId) {
-        const previewDiv = document.createElement('div');
-        previewDiv.id = `preview-${paneId}`;
-        previewDiv.style.height = '100%';
-        previewDiv.style.width = '100%';
-        pane.appendChild(previewDiv);
-        
-        // Create browser controls (commented out for now)
-        // const browserControls = document.createElement('div');
-        // browserControls.className = 'browser-controls';
-        // browserControls.innerHTML = `
-        //     <button class="btn-icon" title="Back">←</button>
-        //     <button class="btn-icon" title="Forward">→</button>
-        //     <button class="btn-icon" title="Refresh">⟳</button>
-        //     <input type="text" class="url-bar" value="https://localhost/customize" placeholder="Enter URL...">
-        //     <button class="btn btn-primary">Go</button>
-        //     <button class="btn btn-secondary">DevTools</button>
-        // `;
-        // previewDiv.appendChild(browserControls);
-        
-        // Create browser mount area (takes full pane since no controls)
-        const browserMount = document.createElement('div');
-        browserMount.className = 'browser-mount';
-        browserMount.id = `browser-mount-${paneId}`;
-        browserMount.style.width = '100%';
-        browserMount.style.height = '100%';
-        browserMount.style.position = 'relative';
-        browserMount.style.background = '#f9f9f9';
-        browserMount.style.border = '2px dashed #ccc';
-        browserMount.style.overflow = 'hidden';
-        browserMount.style.boxSizing = 'border-box';
-        browserMount.innerHTML = '<div class="browser-placeholder"><p>Loading browser...</p></div>';
-        previewDiv.appendChild(browserMount);
-        
-        
-        // Send browser mount bounds for this specific pane
-        function updateBrowserMountBounds() {
-            const rect = browserMount.getBoundingClientRect();
-            if (window.electronAPI && window.electronAPI.sendBrowserMountBounds && rect.width > 0 && rect.height > 0) {
-                // Adjust bounds to account for borders and padding
-                const adjustedBounds = {
-                    x: Math.floor(rect.left + 2), // Account for 2px dashed border
-                    y: Math.floor(rect.top + 2),  // Account for 2px dashed border
-                    width: Math.floor(rect.width - 4), // Subtract both borders (2px each side)
-                    height: Math.floor(rect.height - 4) // Subtract both borders (2px each side)
+
+        // Load JS
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js';
+        script.onload = () => {
+            // Load language modes
+            const modes = [
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clojure/clojure.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js'
+            ];
+            
+            let loaded = 0;
+            modes.forEach(src => {
+                const modeScript = document.createElement('script');
+                modeScript.src = src;
+                modeScript.onload = () => {
+                    loaded++;
+                    if (loaded === modes.length) {
+                        callback();
+                    }
                 };
-                
-                console.log(`Updating browser bounds for ${paneId}:`, adjustedBounds);
-                window.electronAPI.sendBrowserMountBounds(adjustedBounds);
-            }
-        }
-        
-        // Clear any existing active browser mounts (only one can be active)
-        Object.values(contentInstances.previews).forEach(preview => {
-            if (preview && preview.browserMount) {
-                preview.browserMount.classList.remove('active-browser-mount');
-            }
-        });
-        
-        // Mark this as the active browser mount
-        browserMount.classList.add('active-browser-mount');
-        
-        // Update bounds after a short delay to ensure proper positioning
-        setTimeout(updateBrowserMountBounds, 200);
-        
-        
-        contentInstances.previews[paneId] = { 
-            previewDiv, 
-            browserMount, 
-            updateBounds: updateBrowserMountBounds,
-            isActive: true
+                document.head.appendChild(modeScript);
+            });
         };
-        
-        // Navigate to saved preview URL if available
-        const savedUrl = localStorage.getItem('octo-preview-url');
-        if (savedUrl && savedUrl.trim()) {
-            console.log('Navigating to saved preview URL:', savedUrl);
-            setTimeout(() => {
-                if (window.electronAPI && window.electronAPI.navigateBrowser) {
-                    window.electronAPI.navigateBrowser(savedUrl);
-                }
-            }, 1000); // Delay to ensure browser view is ready
-        }
-        
-        console.log('Preview with browser controls initialized for', paneId);
+        document.head.appendChild(script);
     }
-    
-    function getContentColor(type) {
-        switch(type) {
-            case 'claude': return '#66ccff';
-            case 'editor': return '#67ea94';
-            case 'terminal': return '#ff6b6b';
-            case 'preview': return '#ffd93d';
-            default: return '#cccccc';
-        }
-    }
-    
-    async function loadFileTree(paneId) {
+
+    async function loadFileTree(paneId, fileTreeContainer) {
         const projectPath = localStorage.getItem('octo-project-path');
-        const fileTreeContainer = document.getElementById(`file-tree-${paneId}`);
         
         if (!projectPath || !projectPath.trim()) {
             fileTreeContainer.innerHTML = `
@@ -953,7 +441,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
         }
     }
-    
+
     function renderFileTree(files, container, paneId, level = 0) {
         if (!files || files.length === 0) {
             if (level === 0) {
@@ -978,6 +466,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const fileItem = document.createElement('div');
             fileItem.className = `file-item ${file.isDirectory ? 'directory' : 'file'}`;
             fileItem.style.paddingLeft = `${8 + (level * 16)}px`;
+            fileItem.style.cursor = 'pointer';
+            fileItem.style.padding = '2px 8px';
+            fileItem.style.marginBottom = '2px';
             fileItem.dataset.path = file.path;
             fileItem.dataset.expanded = 'false';
             
@@ -991,12 +482,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <span class="file-name">${file.name}</span>
             `;
             
+            fileItem.addEventListener('mouseover', () => {
+                fileItem.style.backgroundColor = '#333';
+            });
+            
+            fileItem.addEventListener('mouseout', () => {
+                fileItem.style.backgroundColor = 'transparent';
+            });
+            
             if (file.isDirectory) {
                 fileItem.addEventListener('click', () => toggleDirectory(fileItem, paneId));
-                fileItem.style.cursor = 'pointer';
             } else {
                 fileItem.addEventListener('click', () => openFile(file.path, paneId));
-                fileItem.style.cursor = 'pointer';
             }
             
             fileList.appendChild(fileItem);
@@ -1007,31 +504,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         container.appendChild(fileList);
     }
-    
+
     async function openFile(filePath, paneId) {
         try {
             const content = await window.electronAPI.readTextFile(filePath);
-            const editor = contentInstances.editors[paneId];
-            if (editor) {
-                editor.setValue(content);
+            const editorInstance = contentInstances.editors[paneId];
+            if (editorInstance && editorInstance.editor) {
+                editorInstance.editor.setValue(content);
                 
                 // Set mode based on file extension
                 const ext = filePath.split('.').pop().toLowerCase();
                 let mode = 'javascript';
                 switch(ext) {
                     case 'js': mode = 'javascript'; break;
-                    case 'ts': mode = 'javascript'; break; // Basic JS highlighting
+                    case 'ts': mode = 'javascript'; break;
                     case 'html': mode = 'xml'; break;
                     case 'css': mode = 'css'; break;
                     case 'json': mode = 'javascript'; break;
-                    case 'md': mode = 'markdown'; break;
-                    case 'clj': mode = 'clojure'; break;
-                    case 'cljs': mode = 'clojure'; break;
-                    case 'cljc': mode = 'clojure'; break;
-                    case 'edn': mode = 'clojure'; break;
+                    case 'clj': case 'cljs': case 'cljc': case 'edn': mode = 'clojure'; break;
                     default: mode = 'text';
                 }
-                editor.setOption('mode', mode);
+                editorInstance.editor.setOption('mode', mode);
                 
                 console.log(`Opened file: ${filePath}`);
             }
@@ -1040,7 +533,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert(`Error opening file: ${error.message}`);
         }
     }
-    
+
     async function toggleDirectory(directoryItem, paneId) {
         const path = directoryItem.dataset.path;
         const isExpanded = directoryItem.dataset.expanded === 'true';
@@ -1068,6 +561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (files && files.length > 0) {
                     const level = (directoryItem.style.paddingLeft.replace('px', '') - 8) / 16 + 1;
                     const subContainer = document.createElement('div');
+                    const editorInstance = contentInstances.editors[paneId];
                     renderFileTree(files, subContainer, paneId, level);
                     
                     // Insert after the directory item
@@ -1080,349 +574,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     }
-    
-    function showScriptPopup(buttonElement, updateButtonCallback) {
-        // Remove any existing popup
-        const existingPopup = document.querySelector('.script-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-            // Show browser view again when closing popup
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
-            }
-            return; // Toggle behavior - close if already open
-        }
-        
-        // Hide browser view temporarily so popup can be seen
-        if (window.electronAPI && window.electronAPI.hideBrowserView) {
-            window.electronAPI.hideBrowserView();
-        }
-        
-        // Load existing script from localStorage
-        const savedScript = localStorage.getItem('octo-script') || '';
-        
-        // Create popup
-        const popup = document.createElement('div');
-        popup.className = 'script-popup';
-        popup.innerHTML = `
-            <div class="script-popup-content">
-                <h3>Script Editor</h3>
-                <textarea id="script-textarea" placeholder="Enter your script here...">${savedScript}</textarea>
-                <div class="script-popup-buttons">
-                    <button id="script-save-btn" class="btn btn-primary">Save</button>
-                    <button id="script-cancel-btn" class="btn btn-secondary">Cancel</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(popup);
-        
-        // Position popup relative to button
-        const buttonRect = buttonElement.getBoundingClientRect();
-        console.log('Button position:', buttonRect);
-        
-        // Position the popup content directly
-        const popupContent = popup.querySelector('.script-popup-content');
-        popupContent.style.position = 'fixed';
-        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
-        popupContent.style.left = buttonRect.left + 'px';
-        popupContent.style.zIndex = '10000';
-        
-        // Add event listeners
-        const saveBtn = popup.querySelector('#script-save-btn');
-        const cancelBtn = popup.querySelector('#script-cancel-btn');
-        const textarea = popup.querySelector('#script-textarea');
-        
-        saveBtn.addEventListener('click', () => {
-            const scriptContent = textarea.value;
-            console.log('Saving script:', scriptContent);
-            
-            // Save to localStorage
-            localStorage.setItem('octo-script', scriptContent);
-            
-            // Show success feedback
-            saveBtn.textContent = 'Saved!';
-            saveBtn.style.background = '#67ea94';
-            setTimeout(() => {
-                popup.remove();
-                // Update button appearance after saving
-                if (updateButtonCallback) {
-                    updateButtonCallback();
-                }
-                // Show browser view again when closing popup
-                if (window.electronAPI && window.electronAPI.showBrowserView) {
-                    window.electronAPI.showBrowserView();
-                }
-            }, 500);
-        });
-        
-        cancelBtn.addEventListener('click', () => {
-            popup.remove();
-            // Show browser view again when closing popup
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
-            }
-        });
-        
-        // Close popup when clicking outside
-        document.addEventListener('click', function closePopup(e) {
-            if (!popup.contains(e.target) && e.target !== buttonElement) {
-                popup.remove();
-                // Show browser view again when closing popup
-                if (window.electronAPI && window.electronAPI.showBrowserView) {
-                    window.electronAPI.showBrowserView();
-                }
-                document.removeEventListener('click', closePopup);
-            }
-        });
-        
-        // Focus textarea
-        textarea.focus();
-    }
-    
-    function runSavedScript() {
-        const savedScript = localStorage.getItem('octo-script');
-        if (!savedScript || !savedScript.trim()) {
-            console.log('No script to run');
-            return;
-        }
-        
-        console.log('Running script:', savedScript);
-        
-        // Find an active terminal to run the script in
-        const activeTerminals = Object.entries(contentInstances.terminals).filter(([paneId, terminal]) => terminal);
-        
-        if (activeTerminals.length === 0) {
-            console.log('No active terminals found - creating one in first available pane');
-            // Find the first available pane and create a terminal
-            const panes = ['editor-top-pane', 'claude-pane', 'editor-bottom-pane', 'terminal-pane'];
-            const firstPane = document.getElementById(panes[0]);
-            if (firstPane) {
-                // Clear and initialize terminal in first pane
-                firstPane.innerHTML = '';
-                initializeTerminalInPane(firstPane, panes[0]);
-                
-                // Wait a moment for terminal to initialize, then run script
-                setTimeout(() => {
-                    executeScriptInTerminal(panes[0], savedScript);
-                }, 1000);
-            }
-        } else {
-            // Use the first active terminal
-            const [paneId] = activeTerminals[0];
-            executeScriptInTerminal(paneId, savedScript);
-        }
-    }
-    
-    function executeScriptInTerminal(paneId, script) {
-        if (window.electronAPI && window.electronAPI.terminalWrite) {
-            // Write the script to the terminal
-            console.log(`Executing script in terminal ${paneId}:`, script);
-            window.electronAPI.terminalWrite(script + '\n');
-        } else {
-            console.log('Terminal API not available');
-        }
-    }
-    
-    function showProjectPathPopup(buttonElement) {
-        // Remove any existing popup
-        const existingPopup = document.querySelector('.project-path-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-            return;
-        }
-        
-        // Hide browser view temporarily
-        if (window.electronAPI && window.electronAPI.hideBrowserView) {
-            window.electronAPI.hideBrowserView();
-        }
-        
-        // Load existing project path from localStorage
-        const savedPath = localStorage.getItem('octo-project-path') || '';
-        
-        // Create popup
-        const popup = document.createElement('div');
-        popup.className = 'project-path-popup';
-        popup.innerHTML = `
-            <div class="project-path-popup-content">
-                <h3>Project Path</h3>
-                <div class="project-path-input-group">
-                    <input type="text" id="project-path-input" placeholder="Enter project path..." value="${savedPath}">
-                    <button id="project-path-browse-btn" class="btn btn-secondary">Browse</button>
-                </div>
-                <div class="project-path-popup-buttons">
-                    <button id="project-path-save-btn" class="btn btn-primary">Save</button>
-                    <button id="project-path-cancel-btn" class="btn btn-secondary">Cancel</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(popup);
-        
-        // Position popup relative to button
-        const buttonRect = buttonElement.getBoundingClientRect();
-        const popupContent = popup.querySelector('.project-path-popup-content');
-        popupContent.style.position = 'fixed';
-        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
-        popupContent.style.left = buttonRect.left + 'px';
-        popupContent.style.zIndex = '10000';
-        
-        // Add event listeners
-        const saveBtn = popup.querySelector('#project-path-save-btn');
-        const cancelBtn = popup.querySelector('#project-path-cancel-btn');
-        const browseBtn = popup.querySelector('#project-path-browse-btn');
-        const input = popup.querySelector('#project-path-input');
-        
-        saveBtn.addEventListener('click', () => {
-            const pathContent = input.value;
-            console.log('Saving project path:', pathContent);
-            localStorage.setItem('octo-project-path', pathContent);
-            
-            saveBtn.textContent = 'Saved!';
-            saveBtn.style.background = '#67ea94';
-            setTimeout(() => {
-                popup.remove();
-                if (window.electronAPI && window.electronAPI.showBrowserView) {
-                    window.electronAPI.showBrowserView();
-                }
-            }, 500);
-        });
-        
-        browseBtn.addEventListener('click', async () => {
-            console.log('Browse button clicked - opening folder dialog');
-            if (window.electronAPI && window.electronAPI.selectFolder) {
-                try {
-                    const selectedPath = await window.electronAPI.selectFolder();
-                    if (selectedPath) {
-                        input.value = selectedPath;
-                        console.log('Selected folder:', selectedPath);
-                    }
-                } catch (error) {
-                    console.error('Error selecting folder:', error);
-                }
-            } else {
-                console.log('selectFolder API not available');
-            }
-        });
-        
-        cancelBtn.addEventListener('click', () => {
-            popup.remove();
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
-            }
-        });
-        
-        // Close popup when clicking outside
-        document.addEventListener('click', function closePopup(e) {
-            if (!popup.contains(e.target) && e.target !== buttonElement) {
-                popup.remove();
-                if (window.electronAPI && window.electronAPI.showBrowserView) {
-                    window.electronAPI.showBrowserView();
-                }
-                document.removeEventListener('click', closePopup);
-            }
-        });
-        
-        input.focus();
-    }
-    
-    function showPreviewUrlPopup(buttonElement) {
-        // Remove any existing popup
-        const existingPopup = document.querySelector('.preview-url-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-            return;
-        }
-        
-        // Hide browser view temporarily
-        if (window.electronAPI && window.electronAPI.hideBrowserView) {
-            window.electronAPI.hideBrowserView();
-        }
-        
-        // Load existing preview URL from localStorage
-        const savedUrl = localStorage.getItem('octo-preview-url') || 'http://localhost:3000';
-        
-        // Create popup
-        const popup = document.createElement('div');
-        popup.className = 'preview-url-popup';
-        popup.innerHTML = `
-            <div class="preview-url-popup-content">
-                <h3>Preview URL</h3>
-                <input type="text" id="preview-url-input" placeholder="Enter preview URL..." value="${savedUrl}">
-                <div class="preview-url-popup-buttons">
-                    <button id="preview-url-save-btn" class="btn btn-primary">Save</button>
-                    <button id="preview-url-go-btn" class="btn btn-secondary">Go</button>
-                    <button id="preview-url-cancel-btn" class="btn btn-secondary">Cancel</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(popup);
-        
-        // Position popup relative to button
-        const buttonRect = buttonElement.getBoundingClientRect();
-        const popupContent = popup.querySelector('.preview-url-popup-content');
-        popupContent.style.position = 'fixed';
-        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
-        popupContent.style.left = buttonRect.left + 'px';
-        popupContent.style.zIndex = '10000';
-        
-        // Add event listeners
-        const saveBtn = popup.querySelector('#preview-url-save-btn');
-        const goBtn = popup.querySelector('#preview-url-go-btn');
-        const cancelBtn = popup.querySelector('#preview-url-cancel-btn');
-        const input = popup.querySelector('#preview-url-input');
-        
-        saveBtn.addEventListener('click', () => {
-            const urlContent = input.value;
-            console.log('Saving preview URL:', urlContent);
-            localStorage.setItem('octo-preview-url', urlContent);
-            
-            saveBtn.textContent = 'Saved!';
-            saveBtn.style.background = '#67ea94';
-            setTimeout(() => {
-                popup.remove();
-                if (window.electronAPI && window.electronAPI.showBrowserView) {
-                    window.electronAPI.showBrowserView();
-                }
-            }, 500);
-        });
-        
-        goBtn.addEventListener('click', () => {
-            const urlContent = input.value;
-            console.log('Navigating to:', urlContent);
-            if (window.electronAPI && window.electronAPI.navigateBrowser) {
-                window.electronAPI.navigateBrowser(urlContent);
-            }
-            popup.remove();
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
-            }
-        });
-        
-        cancelBtn.addEventListener('click', () => {
-            popup.remove();
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
-            }
-        });
-        
-        // Close popup when clicking outside
-        document.addEventListener('click', function closePopup(e) {
-            if (!popup.contains(e.target) && e.target !== buttonElement) {
-                popup.remove();
-                if (window.electronAPI && window.electronAPI.showBrowserView) {
-                    window.electronAPI.showBrowserView();
-                }
-                document.removeEventListener('click', closePopup);
-            }
-        });
-        
-        input.focus();
-        input.select();
-    }
-    
-    // Initialize header buttons
+
+    // Initialize header buttons (keeping existing functionality)
     function initializeHeaderButtons() {
         const playBtn = document.getElementById('play-btn');
         const scriptBtn = document.getElementById('script-btn');
@@ -1435,9 +588,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         function updateScriptButtonAppearance() {
             const savedScript = localStorage.getItem('octo-script');
             if (savedScript && savedScript.trim()) {
-                scriptBtn.style.background = '#67ea94';
-                scriptBtn.style.color = '#1e1e1e';
-                scriptBtn.title = 'Script (saved)';
+                if (scriptBtn) {
+                    scriptBtn.style.background = '#67ea94';
+                    scriptBtn.style.color = '#1e1e1e';
+                    scriptBtn.title = 'Script (saved)';
+                }
                 
                 // Also update play button when script is available
                 if (playBtn) {
@@ -1446,9 +601,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     playBtn.title = 'Run Script';
                 }
             } else {
-                scriptBtn.style.background = '';
-                scriptBtn.style.color = '';
-                scriptBtn.title = 'Script';
+                if (scriptBtn) {
+                    scriptBtn.style.background = '';
+                    scriptBtn.style.color = '';
+                    scriptBtn.title = 'Script';
+                }
                 
                 // Reset play button when no script
                 if (playBtn) {
@@ -1474,29 +631,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showScriptPopup(e.target, updateScriptButtonAppearance);
             });
         }
-        
-        if (devtoolsBtn) {
-            devtoolsBtn.addEventListener('click', () => {
-                console.log('DevTools button clicked - toggling DevTools');
-                if (window.electronAPI && window.electronAPI.browserDevTools) {
-                    window.electronAPI.browserDevTools();
-                } else {
-                    console.log('DevTools API not available');
-                }
-            });
-        }
-        
+
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => {
                 console.log('Refresh button clicked - refreshing browser');
                 if (window.electronAPI && window.electronAPI.browserRefresh) {
                     window.electronAPI.browserRefresh();
-                } else {
-                    console.log('Browser refresh API not available');
                 }
             });
         }
-        
+
+        if (devtoolsBtn) {
+            devtoolsBtn.addEventListener('click', () => {
+                console.log('DevTools button clicked - toggling DevTools');
+                if (window.electronAPI && window.electronAPI.browserDevTools) {
+                    window.electronAPI.browserDevTools();
+                }
+            });
+        }
+
         if (projectPathBtn) {
             projectPathBtn.addEventListener('click', (e) => {
                 console.log('Project Path button clicked - showing popup');
@@ -1512,132 +665,307 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Initialize circle buttons and pane click handlers
-    setTimeout(() => {
-        initializeCircleButtons();
-        initializePaneClickHandlers();
-        initializeHeaderButtons();
-        initializeDefaultLayout();
-        initializeResizers();
-    }, 200);
-    
-    function initializeDefaultLayout() {
-        console.log('Setting up default layout...');
-        
-        // Top Left: Browser (preview)
-        const topLeftPane = document.getElementById('editor-top-pane');
-        if (topLeftPane) {
-            topLeftPane.innerHTML = '';
-            initializePreviewInPane(topLeftPane, 'editor-top-pane');
+    // Add all the missing popup and script functions
+    function showScriptPopup(buttonElement, updateButtonCallback) {
+        // Remove any existing popup
+        const existingPopup = document.querySelector('.script-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+            return;
         }
         
-        // Top Right: Terminal
-        const topRightPane = document.getElementById('claude-pane');
-        if (topRightPane) {
-            topRightPane.innerHTML = '';
-            initializeTerminalInPane(topRightPane, 'claude-pane');
+        if (window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView();
         }
         
-        // Bottom Left: Claude
-        const bottomLeftPane = document.getElementById('editor-bottom-pane');
-        if (bottomLeftPane) {
-            bottomLeftPane.innerHTML = '';
-            initializeClaudeInPane(bottomLeftPane, 'editor-bottom-pane');
-        }
+        const savedScript = localStorage.getItem('octo-script') || '';
         
-        // Bottom Right: Editor
-        const bottomRightPane = document.getElementById('terminal-pane');
-        if (bottomRightPane) {
-            bottomRightPane.innerHTML = '';
-            initializeEditorInPane(bottomRightPane, 'terminal-pane');
-        }
+        const popup = document.createElement('div');
+        popup.className = 'script-popup';
+        popup.innerHTML = `
+            <div class="script-popup-content">
+                <h3>Script Editor</h3>
+                <textarea id="script-textarea" placeholder="Enter your script here...">${savedScript}</textarea>
+                <div class="script-popup-buttons">
+                    <button id="script-save-btn" class="btn btn-primary">Save</button>
+                    <button id="script-cancel-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        `;
         
-        console.log('Default layout initialized');
-    }
-    
-    function initializeResizers() {
-        // Add horizontal resizer between main panes
-        const editorPane = document.getElementById('editor-pane');
-        const horizontalResizer = document.createElement('div');
-        horizontalResizer.className = 'horizontal-resizer';
-        editorPane.appendChild(horizontalResizer);
+        document.body.appendChild(popup);
         
-        // Add vertical resizers within panes
-        const editorTopPane = document.getElementById('editor-top-pane');
-        const claudePane = document.getElementById('claude-pane');
+        const buttonRect = buttonElement.getBoundingClientRect();
+        const popupContent = popup.querySelector('.script-popup-content');
+        popupContent.style.position = 'fixed';
+        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
+        popupContent.style.left = buttonRect.left + 'px';
+        popupContent.style.zIndex = '10000';
         
-        const verticalResizer1 = document.createElement('div');
-        verticalResizer1.className = 'vertical-resizer';
-        editorTopPane.appendChild(verticalResizer1);
+        const saveBtn = popup.querySelector('#script-save-btn');
+        const cancelBtn = popup.querySelector('#script-cancel-btn');
+        const textarea = popup.querySelector('#script-textarea');
         
-        const verticalResizer2 = document.createElement('div');
-        verticalResizer2.className = 'vertical-resizer';
-        claudePane.appendChild(verticalResizer2);
-        
-        // Horizontal resize functionality
-        let isResizingHorizontal = false;
-        
-        horizontalResizer.addEventListener('mousedown', (e) => {
-            isResizingHorizontal = true;
-            document.addEventListener('mousemove', handleHorizontalResize);
-            document.addEventListener('mouseup', stopHorizontalResize);
-            e.preventDefault();
+        saveBtn.addEventListener('click', () => {
+            const scriptContent = textarea.value;
+            localStorage.setItem('octo-script', scriptContent);
+            
+            saveBtn.textContent = 'Saved!';
+            saveBtn.style.background = '#67ea94';
+            setTimeout(() => {
+                popup.remove();
+                if (updateButtonCallback) updateButtonCallback();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+            }, 500);
         });
         
-        function handleHorizontalResize(e) {
-            if (!isResizingHorizontal) return;
-            
-            const container = document.querySelector('.main-container');
-            const containerRect = container.getBoundingClientRect();
-            const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-            
-            if (newWidth > 20 && newWidth < 80) {
-                editorPane.style.width = newWidth + '%';
+        cancelBtn.addEventListener('click', () => {
+            popup.remove();
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
             }
-        }
-        
-        function stopHorizontalResize() {
-            isResizingHorizontal = false;
-            document.removeEventListener('mousemove', handleHorizontalResize);
-            document.removeEventListener('mouseup', stopHorizontalResize);
-        }
-        
-        // Vertical resize functionality
-        let isResizingVertical = false;
-        let currentResizer = null;
-        
-        [verticalResizer1, verticalResizer2].forEach(resizer => {
-            resizer.addEventListener('mousedown', (e) => {
-                isResizingVertical = true;
-                currentResizer = resizer;
-                document.addEventListener('mousemove', handleVerticalResize);
-                document.addEventListener('mouseup', stopVerticalResize);
-                e.preventDefault();
-            });
         });
         
-        function handleVerticalResize(e) {
-            if (!isResizingVertical || !currentResizer) return;
-            
-            const pane = currentResizer.parentElement;
-            const container = pane.parentElement;
-            const containerRect = container.getBoundingClientRect();
-            const newHeight = ((e.clientY - containerRect.top) / containerRect.height) * 100;
-            
-            if (newHeight > 20 && newHeight < 80) {
-                pane.style.height = newHeight + '%';
+        document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target) && e.target !== buttonElement) {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+                document.removeEventListener('click', closePopup);
             }
-        }
+        });
         
-        function stopVerticalResize() {
-            isResizingVertical = false;
-            currentResizer = null;
-            document.removeEventListener('mousemove', handleVerticalResize);
-            document.removeEventListener('mouseup', stopVerticalResize);
-        }
-        
-        console.log('Resizers initialized');
+        textarea.focus();
     }
 
-    console.log('Application initialized');
+    function runSavedScript() {
+        const savedScript = localStorage.getItem('octo-script');
+        if (!savedScript || !savedScript.trim()) {
+            console.log('No script to run');
+            return;
+        }
+        
+        console.log('Running script:', savedScript);
+        
+        // Find an active terminal to run the script in
+        const activeTerminals = Object.entries(contentInstances.terminals).filter(([paneId, terminal]) => terminal);
+        
+        if (activeTerminals.length > 0) {
+            const [paneId] = activeTerminals[0];
+            executeScriptInTerminal(paneId, savedScript);
+        } else {
+            console.log('No active terminals found');
+        }
+    }
+    
+    function executeScriptInTerminal(paneId, script) {
+        if (window.electronAPI && window.electronAPI.terminalWrite) {
+            console.log(`Executing script in terminal ${paneId}:`, script);
+            window.electronAPI.terminalWrite(script + '\n');
+        } else {
+            console.log('Terminal API not available');
+        }
+    }
+
+    function showProjectPathPopup(buttonElement) {
+        const existingPopup = document.querySelector('.project-path-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+            return;
+        }
+        
+        if (window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView();
+        }
+        
+        const savedPath = localStorage.getItem('octo-project-path') || '';
+        
+        const popup = document.createElement('div');
+        popup.className = 'project-path-popup';
+        popup.innerHTML = `
+            <div class="project-path-popup-content">
+                <h3>Project Path</h3>
+                <div class="project-path-input-group">
+                    <input type="text" id="project-path-input" placeholder="Enter project path..." value="${savedPath}">
+                    <button id="project-path-browse-btn" class="btn btn-secondary">Browse</button>
+                </div>
+                <div class="project-path-popup-buttons">
+                    <button id="project-path-save-btn" class="btn btn-primary">Save</button>
+                    <button id="project-path-cancel-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        
+        const buttonRect = buttonElement.getBoundingClientRect();
+        const popupContent = popup.querySelector('.project-path-popup-content');
+        popupContent.style.position = 'fixed';
+        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
+        popupContent.style.left = buttonRect.left + 'px';
+        popupContent.style.zIndex = '10000';
+        
+        const saveBtn = popup.querySelector('#project-path-save-btn');
+        const cancelBtn = popup.querySelector('#project-path-cancel-btn');
+        const browseBtn = popup.querySelector('#project-path-browse-btn');
+        const input = popup.querySelector('#project-path-input');
+        
+        saveBtn.addEventListener('click', () => {
+            const pathContent = input.value;
+            localStorage.setItem('octo-project-path', pathContent);
+            
+            saveBtn.textContent = 'Saved!';
+            saveBtn.style.background = '#67ea94';
+            setTimeout(() => {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+            }, 500);
+        });
+        
+        browseBtn.addEventListener('click', async () => {
+            if (window.electronAPI && window.electronAPI.selectFolder) {
+                try {
+                    const selectedPath = await window.electronAPI.selectFolder();
+                    if (selectedPath) {
+                        input.value = selectedPath;
+                    }
+                } catch (error) {
+                    console.error('Error selecting folder:', error);
+                }
+            }
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            popup.remove();
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+        });
+        
+        document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target) && e.target !== buttonElement) {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+                document.removeEventListener('click', closePopup);
+            }
+        });
+        
+        input.focus();
+    }
+
+    function showPreviewUrlPopup(buttonElement) {
+        const existingPopup = document.querySelector('.preview-url-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+            return;
+        }
+        
+        if (window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView();
+        }
+        
+        const savedUrl = localStorage.getItem('octo-preview-url') || 'http://localhost:3000';
+        
+        const popup = document.createElement('div');
+        popup.className = 'preview-url-popup';
+        popup.innerHTML = `
+            <div class="preview-url-popup-content">
+                <h3>Preview URL</h3>
+                <input type="text" id="preview-url-input" placeholder="Enter preview URL..." value="${savedUrl}">
+                <div class="preview-url-popup-buttons">
+                    <button id="preview-url-save-btn" class="btn btn-primary">Save</button>
+                    <button id="preview-url-go-btn" class="btn btn-secondary">Go</button>
+                    <button id="preview-url-cancel-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        
+        const buttonRect = buttonElement.getBoundingClientRect();
+        const popupContent = popup.querySelector('.preview-url-popup-content');
+        popupContent.style.position = 'fixed';
+        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
+        popupContent.style.left = buttonRect.left + 'px';
+        popupContent.style.zIndex = '10000';
+        
+        const saveBtn = popup.querySelector('#preview-url-save-btn');
+        const goBtn = popup.querySelector('#preview-url-go-btn');
+        const cancelBtn = popup.querySelector('#preview-url-cancel-btn');
+        const input = popup.querySelector('#preview-url-input');
+        
+        saveBtn.addEventListener('click', () => {
+            const urlContent = input.value;
+            localStorage.setItem('octo-preview-url', urlContent);
+            
+            saveBtn.textContent = 'Saved!';
+            saveBtn.style.background = '#67ea94';
+            setTimeout(() => {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+            }, 500);
+        });
+        
+        goBtn.addEventListener('click', () => {
+            const urlContent = input.value;
+            if (window.electronAPI && window.electronAPI.navigateBrowser) {
+                window.electronAPI.navigateBrowser(urlContent);
+            }
+            popup.remove();
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            popup.remove();
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+        });
+        
+        document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target) && e.target !== buttonElement) {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+                document.removeEventListener('click', closePopup);
+            }
+        });
+        
+        input.focus();
+        input.select();
+    }
+
+    // Load system information
+    if (window.electronAPI) {
+        try {
+            const versions = window.electronAPI.getVersions();
+            const appVersion = await window.electronAPI.getAppVersion();
+            console.log('System info loaded:', versions, appVersion);
+        } catch (error) {
+            console.error('Error loading system info:', error);
+        }
+    }
+
+    // Initialize everything
+    setTimeout(() => {
+        initializeGoldenLayout();
+        initializeHeaderButtons();
+    }, 200);
+
+    console.log('Application initialized with Golden Layout');
 });
