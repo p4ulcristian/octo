@@ -1314,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const playBtn = document.getElementById('play-btn');
         const scriptBtn = document.getElementById('script-btn');
         const devtoolsBtn = document.getElementById('devtools-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
         const projectPathBtn = document.getElementById('project-path-btn');
         const previewUrlBtn = document.getElementById('preview-url-btn');
         
@@ -1372,6 +1373,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                console.log('Refresh button clicked - refreshing browser');
+                if (window.electronAPI && window.electronAPI.browserRefresh) {
+                    window.electronAPI.browserRefresh();
+                } else {
+                    console.log('Browser refresh API not available');
+                }
+            });
+        }
+        
         if (projectPathBtn) {
             projectPathBtn.addEventListener('click', (e) => {
                 console.log('Project Path button clicked - showing popup');
@@ -1393,6 +1405,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initializePaneClickHandlers();
         initializeHeaderButtons();
         initializeDefaultLayout();
+        initializeResizers();
     }, 200);
     
     function initializeDefaultLayout() {
@@ -1427,6 +1440,90 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         console.log('Default layout initialized');
+    }
+    
+    function initializeResizers() {
+        // Add horizontal resizer between main panes
+        const editorPane = document.getElementById('editor-pane');
+        const horizontalResizer = document.createElement('div');
+        horizontalResizer.className = 'horizontal-resizer';
+        editorPane.appendChild(horizontalResizer);
+        
+        // Add vertical resizers within panes
+        const editorTopPane = document.getElementById('editor-top-pane');
+        const claudePane = document.getElementById('claude-pane');
+        
+        const verticalResizer1 = document.createElement('div');
+        verticalResizer1.className = 'vertical-resizer';
+        editorTopPane.appendChild(verticalResizer1);
+        
+        const verticalResizer2 = document.createElement('div');
+        verticalResizer2.className = 'vertical-resizer';
+        claudePane.appendChild(verticalResizer2);
+        
+        // Horizontal resize functionality
+        let isResizingHorizontal = false;
+        
+        horizontalResizer.addEventListener('mousedown', (e) => {
+            isResizingHorizontal = true;
+            document.addEventListener('mousemove', handleHorizontalResize);
+            document.addEventListener('mouseup', stopHorizontalResize);
+            e.preventDefault();
+        });
+        
+        function handleHorizontalResize(e) {
+            if (!isResizingHorizontal) return;
+            
+            const container = document.querySelector('.main-container');
+            const containerRect = container.getBoundingClientRect();
+            const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+            
+            if (newWidth > 20 && newWidth < 80) {
+                editorPane.style.width = newWidth + '%';
+            }
+        }
+        
+        function stopHorizontalResize() {
+            isResizingHorizontal = false;
+            document.removeEventListener('mousemove', handleHorizontalResize);
+            document.removeEventListener('mouseup', stopHorizontalResize);
+        }
+        
+        // Vertical resize functionality
+        let isResizingVertical = false;
+        let currentResizer = null;
+        
+        [verticalResizer1, verticalResizer2].forEach(resizer => {
+            resizer.addEventListener('mousedown', (e) => {
+                isResizingVertical = true;
+                currentResizer = resizer;
+                document.addEventListener('mousemove', handleVerticalResize);
+                document.addEventListener('mouseup', stopVerticalResize);
+                e.preventDefault();
+            });
+        });
+        
+        function handleVerticalResize(e) {
+            if (!isResizingVertical || !currentResizer) return;
+            
+            const pane = currentResizer.parentElement;
+            const container = pane.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            const newHeight = ((e.clientY - containerRect.top) / containerRect.height) * 100;
+            
+            if (newHeight > 20 && newHeight < 80) {
+                pane.style.height = newHeight + '%';
+            }
+        }
+        
+        function stopVerticalResize() {
+            isResizingVertical = false;
+            currentResizer = null;
+            document.removeEventListener('mousemove', handleVerticalResize);
+            document.removeEventListener('mouseup', stopVerticalResize);
+        }
+        
+        console.log('Resizers initialized');
     }
 
     console.log('Application initialized');

@@ -95,15 +95,58 @@ header h1 {
     display: flex;
     overflow: hidden;
     height: 100vh;
+    position: relative;
 }
 
-/* Set 60-40 split for main horizontal layout */
+/* Set 60-40 split for main horizontal layout with resizable */
 #editor-pane {
-    flex: 6; /* 60% */
+    width: 60%;
+    min-width: 200px;
+    position: relative;
 }
 
 #terminal-claude-pane {
-    flex: 4; /* 40% */
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+}
+
+/* Horizontal resizer */
+.horizontal-resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: #3e3e42;
+    cursor: ew-resize;
+    z-index: 1000;
+    transition: background-color 0.2s;
+}
+
+.horizontal-resizer:hover {
+    background: #0e639c;
+    width: 6px;
+    right: -1px;
+}
+
+/* Vertical resizer */
+.vertical-resizer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: #3e3e42;
+    cursor: ns-resize;
+    z-index: 1000;
+    transition: background-color 0.2s;
+}
+
+.vertical-resizer:hover {
+    background: #0e639c;
+    height: 6px;
+    bottom: -1px;
 }
 
 .splitpanes {
@@ -122,14 +165,14 @@ header h1 {
 
 #editor-pane {
     height: 100%;
-    width: 100%;
     display: flex;
     flex-direction: column;
 }
 
-/* Set 60-40 vertical split for editor pane */
+/* Set 60-40 vertical split for editor pane with resizable */
 #editor-top-pane {
-    flex: 6; /* 60% */
+    height: 60%;
+    min-height: 100px;
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     overflow: hidden;
@@ -138,10 +181,12 @@ header h1 {
     align-items: center;
     cursor: pointer;
     transition: border-color 0.2s ease;
+    position: relative;
 }
 
 #editor-bottom-pane {
-    flex: 4; /* 40% */
+    flex: 1;
+    min-height: 100px;
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     overflow: hidden;
@@ -150,6 +195,7 @@ header h1 {
     align-items: center;
     cursor: pointer;
     transition: border-color 0.2s ease;
+    position: relative;
 }
 
 #editor-top-pane:hover, #editor-bottom-pane:hover {
@@ -164,14 +210,14 @@ header h1 {
 
 #terminal-claude-pane {
     height: 100%;
-    width: 100%;
     display: flex;
     flex-direction: column;
 }
 
-/* Set 60-40 vertical split for terminal-claude pane */
+/* Set 60-40 vertical split for terminal-claude pane with resizable */
 #claude-pane {
-    flex: 6; /* 60% */
+    height: 60%;
+    min-height: 100px;
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     overflow: hidden;
@@ -180,10 +226,12 @@ header h1 {
     align-items: center;
     cursor: pointer;
     transition: border-color 0.2s ease;
+    position: relative;
 }
 
 #terminal-pane {
-    flex: 4; /* 40% */
+    flex: 1;
+    min-height: 100px;
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     overflow: hidden;
@@ -192,6 +240,7 @@ header h1 {
     align-items: center;
     cursor: pointer;
     transition: border-color 0.2s ease;
+    position: relative;
 }
 
 #claude-pane:hover, #terminal-pane:hover {

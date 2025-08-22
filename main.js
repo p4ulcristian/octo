@@ -101,7 +101,7 @@ function createWindow() {
   });
 
   ipcMain.on('browser-refresh', () => {
-    browserView.webContents.reload();
+    browserView.webContents.reloadIgnoringCache();
   });
 
   ipcMain.on('browser-devtools', () => {
