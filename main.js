@@ -17,23 +17,30 @@ let ptyProcess = null;
 let claudePtyProcess = null;
 
 function createWindow() {
-  const iconPath = path.join(__dirname, 'icon.png');
-  console.log('Icon path:', iconPath);
-  console.log('Icon exists:', require('fs').existsSync(iconPath));
+  let iconPath = null;
+  
+  // Try to set icon in development mode (may not always work)
+  if (process.env.NODE_ENV !== 'production') {
+    iconPath = path.join(__dirname, 'assets', 'logo.png');
+  }
 
-  mainWindow = new BrowserWindow({
+  const windowOptions = {
     width: 1400,
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
-    },
-    icon: iconPath
-  });
+    }
+  };
 
-  // Alternative: Set icon after window creation
-  mainWindow.setIcon(iconPath);
+  // Add icon if available (for development testing)
+  if (iconPath && require('fs').existsSync(iconPath)) {
+    windowOptions.icon = iconPath;
+    console.log('Development icon set:', iconPath);
+  }
+
+  mainWindow = new BrowserWindow(windowOptions);
 
   mainWindow.loadFile('index.html');
 

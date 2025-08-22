@@ -8,7 +8,12 @@
     "dev": "npm run build && NODE_ENV=development electron .",
     "dev-fast": "nodemon --watch main.js --watch preload.js --exec \"electron .\"",
     "build": "webpack",
-    "build:watch": "webpack --watch"
+    "build:watch": "webpack --watch",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
   },
   "keywords": [
     "electron",
@@ -20,6 +25,7 @@
     "@electron/rebuild": "^4.0.1",
     "css-loader": "^7.1.2",
     "electron": "^32.0.0",
+    "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9",
     "electron-reload": "^2.0.0-alpha.1",
     "nodemon": "^3.1.10",
@@ -32,5 +38,28 @@
     "node-pty": "^1.0.0",
     "split.js": "^1.6.5",
     "splitpanes": "^4.0.4"
+  },
+  "build": {
+    "appId": "com.octo.app",
+    "productName": "Octo",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!src/",
+      "!webpack.config.js",
+      "!test-*.html",
+      "!*.log"
+    ],
+    "mac": {
+      "icon": "icon.icns",
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+    },
+    "linux": {
+      "category": "Development"
+    }
   }
 }
