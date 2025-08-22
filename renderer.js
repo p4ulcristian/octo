@@ -94,6 +94,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             initializeEditorComponent(container, componentState, id);
         });
 
+        goldenLayout.registerComponent('git', function(container, componentState) {
+            const id = componentState.id || 'git-' + Date.now();
+            initializeGitComponent(container, componentState, id);
+        });
+
         // Handle component destruction
         goldenLayout.on('componentDestroyed', function(component) {
             const componentId = component.config.componentState.id;
@@ -612,6 +617,140 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Clean up any event listeners if needed
             console.log('Explorer component cleaned up:', componentId);
         };
+    }
+
+    function initializeGitComponent(container, componentState, componentId) {
+        const element = container.getElement();
+        
+        element.html(`
+            <div class="git-container" style="width: 100%; height: 100%; background: #252526; display: flex; flex-direction: column;">
+                <div class="git-header" style="padding: 8px 12px; background: #2d2d30; border-bottom: 1px solid #3e3e42; display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0; font-size: 12px; color: #cccccc; text-transform: uppercase; letter-spacing: 0.5px;">Git Status</h4>
+                    <button class="refresh-git-btn" title="Refresh" style="background: none; border: none; color: #cccccc; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 3px;">⟳</button>
+                </div>
+                <div class="git-content" style="flex: 1; padding: 12px; overflow-y: auto;">
+                    <div class="git-status" id="git-status-${componentId}">
+                        <div class="loading" style="color: #858585; text-align: center; padding: 20px;">Loading git status...</div>
+                    </div>
+                </div>
+            </div>
+        `);
+
+        const gitStatus = element.find(`#git-status-${componentId}`)[0];
+        const refreshBtn = element.find('.refresh-git-btn')[0];
+
+        // Load git status
+        loadGitStatus(componentId, gitStatus);
+        
+        // Add refresh button functionality
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                console.log('Refreshing git status');
+                loadGitStatus(componentId, gitStatus);
+            });
+            
+            // Add hover effect for refresh button
+            refreshBtn.addEventListener('mouseenter', () => {
+                refreshBtn.style.background = '#3e3e42';
+            });
+            refreshBtn.addEventListener('mouseleave', () => {
+                refreshBtn.style.background = 'none';
+            });
+        }
+
+        // Cleanup function
+        cleanupFunctions[componentId] = function() {
+            console.log('Git component cleaned up:', componentId);
+        };
+    }
+
+    async function loadGitStatus(componentId, container) {
+        if (!container) return;
+        
+        try {
+            container.innerHTML = '<div class="loading" style="color: #858585; text-align: center; padding: 20px;">Loading git status...</div>';
+            
+            // Get project path
+            const projectPath = localStorage.getItem('octo-project-path');
+            if (!projectPath || !projectPath.trim()) {
+                container.innerHTML = '<div class="error" style="color: #f48771; text-align: center; padding: 20px;">No project path set. Use Settings to configure.</div>';
+                return;
+            }
+
+            // Check if git status command is available via Electron API
+            if (window.electronAPI && window.electronAPI.runGitCommand) {
+                const status = await window.electronAPI.runGitCommand('status --porcelain', projectPath);
+                const branch = await window.electronAPI.runGitCommand('branch --show-current', projectPath);
+                
+                displayGitStatus(container, status, branch.trim());
+            } else {
+                container.innerHTML = '<div class="error" style="color: #f48771; text-align: center; padding: 20px;">Git commands not available</div>';
+            }
+            
+        } catch (error) {
+            console.error('Error loading git status:', error);
+            container.innerHTML = '<div class="error" style="color: #f48771; text-align: center; padding: 20px;">Error loading git status</div>';
+        }
+    }
+
+    function displayGitStatus(container, statusOutput, currentBranch) {
+        let html = `
+            <div class="git-branch" style="margin-bottom: 16px; padding: 8px; background: #2d2d30; border-radius: 4px;">
+                <div style="color: #67ea94; font-weight: 600; font-size: 13px;">🌿 ${currentBranch || 'main'}</div>
+            </div>
+        `;
+
+        if (!statusOutput || statusOutput.trim() === '') {
+            html += '<div style="color: #67ea94; text-align: center; padding: 20px;">✅ Working tree clean</div>';
+        } else {
+            const lines = statusOutput.trim().split('\n');
+            const modified = [];
+            const untracked = [];
+            const staged = [];
+
+            lines.forEach(line => {
+                if (line.length < 3) return;
+                const status = line.substring(0, 2);
+                const filename = line.substring(3);
+
+                if (status[0] !== ' ') {
+                    staged.push(filename);
+                } else if (status[1] === 'M') {
+                    modified.push(filename);
+                } else if (status === '??') {
+                    untracked.push(filename);
+                }
+            });
+
+            if (staged.length > 0) {
+                html += '<div class="git-section" style="margin-bottom: 12px;">';
+                html += '<div style="color: #67ea94; font-weight: 600; font-size: 12px; margin-bottom: 6px;">📦 STAGED CHANGES</div>';
+                staged.forEach(file => {
+                    html += `<div style="color: #67ea94; font-size: 11px; padding: 2px 0; font-family: monospace;">+ ${file}</div>`;
+                });
+                html += '</div>';
+            }
+
+            if (modified.length > 0) {
+                html += '<div class="git-section" style="margin-bottom: 12px;">';
+                html += '<div style="color: #f48771; font-weight: 600; font-size: 12px; margin-bottom: 6px;">📝 CHANGES</div>';
+                modified.forEach(file => {
+                    html += `<div style="color: #f48771; font-size: 11px; padding: 2px 0; font-family: monospace;">M ${file}</div>`;
+                });
+                html += '</div>';
+            }
+
+            if (untracked.length > 0) {
+                html += '<div class="git-section" style="margin-bottom: 12px;">';
+                html += '<div style="color: #858585; font-weight: 600; font-size: 12px; margin-bottom: 6px;">❓ UNTRACKED FILES</div>';
+                untracked.forEach(file => {
+                    html += `<div style="color: #858585; font-size: 11px; padding: 2px 0; font-family: monospace;">? ${file}</div>`;
+                });
+                html += '</div>';
+            }
+        }
+
+        container.innerHTML = html;
     }
 
     function initializeEditorComponent(container, componentState, componentId) {
@@ -1700,6 +1839,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function createNewGitTab() {
+        const gitId = 'git-' + Date.now();
+        
+        const newItemConfig = {
+            type: 'component',
+            componentName: 'git',
+            componentState: { 
+                id: gitId
+            },
+            title: 'Git Status'
+        };
+        
+        // Find any available stack to add the git tab to
+        if (goldenLayout && goldenLayout.root) {
+            function findStack(item) {
+                if (item.type === 'stack') {
+                    return item;
+                }
+                if (item.contentItems && item.contentItems.length > 0) {
+                    for (let child of item.contentItems) {
+                        const stack = findStack(child);
+                        if (stack) return stack;
+                    }
+                }
+                return null;
+            }
+            
+            const targetStack = findStack(goldenLayout.root);
+            
+            if (targetStack) {
+                targetStack.addChild(newItemConfig);
+                
+                // Switch to the new tab
+                setTimeout(() => {
+                    if (targetStack.contentItems.length > 0) {
+                        const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
+                        targetStack.setActiveContentItem(newTab);
+                    }
+                }, 100);
+                
+                console.log('New git tab created in stack:', targetStack);
+            } else {
+                console.error('No stack found to add git tab to');
+            }
+        }
+    }
+
     function createNewEditorTab() {
         const editorId = 'editor-' + Date.now();
         const editorCount = Object.keys(contentInstances.editors).length + 1;
@@ -1854,10 +2040,121 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Initialize tab navigation
+    function initializeTabNavigation() {
+        const explorerBtn = document.getElementById('explorer-tab-btn');
+        const previewBtn = document.getElementById('preview-tab-btn');
+        const terminalBtn = document.getElementById('terminal-tab-btn');
+        const claudeBtn = document.getElementById('claude-tab-btn');
+        const gitBtn = document.getElementById('git-tab-btn');
+        
+        // Function to find and switch to a specific tab
+        function switchToTab(componentName) {
+            if (goldenLayout && goldenLayout.root) {
+                function findTab(item, targetComponent) {
+                    if (item.type === 'component' && item.config.componentName === targetComponent) {
+                        return item;
+                    }
+                    if (item.contentItems && item.contentItems.length > 0) {
+                        for (let child of item.contentItems) {
+                            const tab = findTab(child, targetComponent);
+                            if (tab) return tab;
+                        }
+                    }
+                    return null;
+                }
+                
+                const targetTab = findTab(goldenLayout.root, componentName);
+                if (targetTab && targetTab.parent) {
+                    targetTab.parent.setActiveContentItem(targetTab);
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Function to update active tab button
+        function updateActiveTabButton(activeComponent) {
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.sidebar-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to the current tab button
+            const buttonMap = {
+                'explorer': explorerBtn,
+                'preview': previewBtn,
+                'terminal': terminalBtn,
+                'claude': claudeBtn,
+                'git': gitBtn
+            };
+            
+            if (buttonMap[activeComponent]) {
+                buttonMap[activeComponent].classList.add('active');
+            }
+        }
+        
+        // Add click handlers
+        if (explorerBtn) {
+            explorerBtn.addEventListener('click', () => {
+                if (switchToTab('explorer')) {
+                    updateActiveTabButton('explorer');
+                }
+            });
+        }
+        
+        if (previewBtn) {
+            previewBtn.addEventListener('click', () => {
+                if (switchToTab('preview')) {
+                    updateActiveTabButton('preview');
+                }
+            });
+        }
+        
+        if (terminalBtn) {
+            terminalBtn.addEventListener('click', () => {
+                if (switchToTab('terminal')) {
+                    updateActiveTabButton('terminal');
+                }
+            });
+        }
+        
+        if (claudeBtn) {
+            claudeBtn.addEventListener('click', () => {
+                if (switchToTab('claude')) {
+                    updateActiveTabButton('claude');
+                }
+            });
+        }
+        
+        if (gitBtn) {
+            gitBtn.addEventListener('click', () => {
+                // Create new git tab instead of switching to existing one
+                createNewGitTab();
+            });
+        }
+        
+        // Listen to tab changes and update button states
+        if (goldenLayout) {
+            goldenLayout.on('stackCreated', function(stack) {
+                stack.on('activeContentItemChanged', function(contentItem) {
+                    const componentName = contentItem.config.componentName;
+                    updateActiveTabButton(componentName);
+                });
+            });
+        }
+        
+        // Set initial active tab (Claude by default since activeItemIndex is 1)
+        setTimeout(() => {
+            updateActiveTabButton('claude');
+        }, 500);
+    }
+
     // Initialize everything
     setTimeout(() => {
         initializeGoldenLayout();
         initializeHeaderButtons();
+        initializeTabNavigation();
     }, 200);
 
     console.log('Application initialized with Golden Layout');

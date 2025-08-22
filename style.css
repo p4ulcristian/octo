@@ -49,6 +49,17 @@ body {
     padding: 8px 0;
     gap: 4px;
     align-items: center;
+    flex: 1;
+}
+
+.sidebar-tabs {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    gap: 2px;
+    align-items: center;
+    border-top: 1px solid #3e3e42;
+    margin-top: auto;
 }
 
 .sidebar-btn {
@@ -88,6 +99,33 @@ body {
 
 /* DevTools button toggle state */
 #devtools-btn.active {
+    background: #0e639c;
+    color: #ffffff;
+}
+
+/* Tab navigation buttons */
+.sidebar-tab-btn {
+    background: transparent;
+    border: none;
+    color: #858585;
+    width: 44px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    border-radius: 6px;
+    font-size: 16px;
+    margin: 0 8px;
+}
+
+.sidebar-tab-btn:hover {
+    background: #2d2d30;
+    color: #cccccc;
+}
+
+.sidebar-tab-btn.active {
     background: #0e639c;
     color: #ffffff;
 }
