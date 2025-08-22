@@ -5,8 +5,10 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "NODE_ENV=development electron .",
-    "dev-fast": "nodemon --watch main.js --watch preload.js --exec \"electron .\""
+    "dev": "npm run build && NODE_ENV=development electron .",
+    "dev-fast": "nodemon --watch main.js --watch preload.js --exec \"electron .\"",
+    "build": "webpack",
+    "build:watch": "webpack --watch"
   },
   "keywords": [
     "electron",
@@ -15,11 +17,16 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "css-loader": "^7.1.2",
     "electron": "^32.0.0",
     "electron-reload": "^2.0.0-alpha.1",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.101.3",
+    "webpack-cli": "^6.0.1"
   },
   "dependencies": {
+    "@xterm/xterm": "^5.5.0",
     "split.js": "^1.6.5",
     "splitpanes": "^4.0.4"
   }

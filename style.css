@@ -210,78 +210,12 @@ header h1 {
     display: none;
 }
 
-/* Terminal Styles */
-.terminal-container {
+/* xterm.js Terminal Styles */
+#xterm-terminal {
     flex: 1;
     background: #1e1e1e;
-    display: flex;
-    flex-direction: column;
-}
-
-.terminal-tabs {
-    display: flex;
-    background: #2d2d2d;
-    border-bottom: 1px solid #444;
-}
-
-.terminal-tab {
-    padding: 6px 15px;
-    background: transparent;
-    border: none;
-    color: #aaa;
-    cursor: pointer;
-    font-size: 12px;
-    border-right: 1px solid #444;
-}
-
-.terminal-tab:hover {
-    background: #333;
-}
-
-.terminal-tab.active {
-    background: #1e1e1e;
-    color: white;
-}
-
-.terminal-content {
-    flex: 1;
-    padding: 10px;
-    overflow-y: auto;
-    font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 12px;
-}
-
-.terminal-line {
-    color: #d4d4d4;
-    margin-bottom: 2px;
-}
-
-.terminal-line.success {
-    color: #4ec9b0;
-}
-
-.terminal-line.error {
-    color: #f48771;
-}
-
-.terminal-input-line {
-    display: flex;
-    margin-top: 10px;
-}
-
-.prompt {
-    color: #4ec9b0;
-    margin-right: 8px;
-}
-
-.terminal-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: #d4d4d4;
-    outline: none;
-    font-family: inherit;
-    font-size: inherit;
+    height: 100%;
+    width: 100%;
 }
 
 /* Browser Styles */

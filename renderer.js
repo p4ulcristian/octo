@@ -1,3 +1,12 @@
+// Check if scripts load
+window.addEventListener('load', () => {
+    console.log('Window loaded - Terminal available:', typeof Terminal);
+    console.log('window.Terminal:', window.Terminal);
+    console.log('AppBundle:', typeof AppBundle);
+    console.log('TestBundle:', window.TestBundle);
+    console.log('All scripts loaded');
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Split.js for the 3-pane layout
     if (typeof Split !== 'undefined') {
@@ -206,194 +215,100 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Update bounds on window resize
     window.addEventListener('resize', updateBrowserMountBounds);
 
-    // Initialize Monaco Editor
-    let monacoEditor = null;
-    let currentFilePath = null;
+
+    // CodeMirror Editor
+    let codeMirrorEditor = null;
+
+    // Initialize xterm.js terminal
+    let terminal = null;
     
-    function initializeMonacoEditor() {
-        console.log('initializeMonacoEditor called');
-        const editorContainer = document.getElementById('monaco-editor');
-        console.log('Editor container:', editorContainer);
+    function initializeTerminal() {
+        const terminalElement = document.getElementById('xterm-terminal');
+        terminal = new Terminal();
+        terminal.open(terminalElement);
+        terminal.write('$ ');
         
-        if (typeof require !== 'undefined') {
-            require.config({ 
-                paths: { 
-                    'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs' 
+        let currentLine = '';
+        terminal.onData(data => {
+            if (data === '\r') {
+                terminal.write('\r\n');
+                if (currentLine.trim()) {
+                    terminal.write(`You typed: ${currentLine}\r\n`);
                 }
-            });
+                currentLine = '';
+                terminal.write('$ ');
+            } else if (data === '\u007f') {
+                if (currentLine.length > 0) {
+                    currentLine = currentLine.slice(0, -1);
+                    terminal.write('\b \b');
+                }
+            } else {
+                currentLine += data;
+                terminal.write(data);
+            }
+        });
+    }
+
+    // Initialize CodeMirror Editor
+    function initializeCodeMirror() {
+        const editorContainer = document.getElementById('codemirror-editor');
+        if (editorContainer && !codeMirrorEditor) {
+            // Load CodeMirror 5 (simpler, no modules needed)
+            const cssLink = document.createElement('link');
+            cssLink.rel = 'stylesheet';
+            cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css';
+            document.head.appendChild(cssLink);
             
-            require(['vs/editor/editor.main'], function() {
-                console.log('Monaco module loaded');
-                if (editorContainer && !monacoEditor) {
-                    console.log('Creating Monaco editor...');
-                    monacoEditor = monaco.editor.create(editorContainer, {
-                        value: [
-                            'function hello() {',
-                            '\tconsole.log("Hello from Monaco Editor!");',
-                            '\treturn "Monaco Editor is working!";',
-                            '}',
-                            '',
-                            '// Click here to start coding',
-                            'hello();'
-                        ].join('\n'),
-                        language: 'javascript',
-                        theme: 'vs-dark',
-                        automaticLayout: true,
-                        minimap: { enabled: false },
-                        fontSize: 14,
-                        lineNumbers: 'on',
-                        roundedSelection: false,
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
-                        wordWrap: 'on'
+            const themeCss = document.createElement('link');
+            themeCss.rel = 'stylesheet';
+            themeCss.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css';
+            document.head.appendChild(themeCss);
+            
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js';
+            script.onload = () => {
+                const jsMode = document.createElement('script');
+                jsMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js';
+                jsMode.onload = () => {
+                    window.codeMirrorEditor = CodeMirror(editorContainer, {
+                        value: 'function hello() {\n  console.log("Hello CodeMirror!");\n}',
+                        mode: 'javascript',
+                        theme: 'dracula',
+                        lineNumbers: true,
+                        autoCloseBrackets: true,
+                        matchBrackets: true,
+                        indentUnit: 2,
+                        tabSize: 2
                     });
-                    
-                    // Force resize after creation
-                    setTimeout(() => {
-                        if (monacoEditor) {
-                            monacoEditor.layout();
-                        }
-                    }, 200);
-                    console.log('Monaco editor created:', monacoEditor);
-                } else {
-                    console.log('Container not found or editor already exists');
-                }
-            });
-        } else {
-            console.log('require not available');
+                    console.log('CodeMirror editor created successfully');
+                };
+                document.head.appendChild(jsMode);
+            };
+            document.head.appendChild(script);
         }
     }
 
-    // Initialize Monaco when editor tab is first clicked
+    // Initialize CodeMirror when editor tab is clicked
     const editorTabBtn = document.querySelector('[data-tab="editor"]');
     if (editorTabBtn) {
         editorTabBtn.addEventListener('click', () => {
-            console.log('Editor tab clicked');
+            if (!codeMirrorEditor) {
+                initializeCodeMirror();
+                codeMirrorEditor = true; // Mark as initialized
+            }
+        });
+    }
+    
+    // Initialize terminal when terminal tab is clicked
+    const terminalTabBtn = document.querySelector('[data-tab="terminal"]');
+    if (terminalTabBtn) {
+        terminalTabBtn.addEventListener('click', () => {
             setTimeout(() => {
-                if (!monacoEditor) {
-                    console.log('Initializing Monaco Editor...');
-                    initializeMonacoEditor();
-                } else {
-                    console.log('Monaco Editor already initialized');
+                if (!terminal) {
+                    initializeTerminal();
                 }
             }, 100);
         });
-    } else {
-        console.log('Editor tab button not found');
-    }
-
-    // Add file click handlers
-    function addFileClickHandlers() {
-        const fileItems = document.querySelectorAll('.tree-item');
-        fileItems.forEach(item => {
-            item.addEventListener('click', async () => {
-                const fileName = item.textContent.trim();
-                
-                // Only handle actual files (not folders)
-                if (fileName.includes('.')) {
-                    // Map display names to actual file paths
-                    const fileMap = {
-                        '📄 main.js': './main.js',
-                        '📄 renderer.js': './renderer.js',
-                        '📄 style.css': './style.css',
-                        '📄 package.json': './package.json',
-                        '📄 index.html': './index.html'
-                    };
-                    
-                    const filePath = fileMap[fileName];
-                    if (filePath) {
-                        await loadFileInEditor(filePath, fileName);
-                    }
-                }
-            });
-        });
-    }
-
-    async function loadFileInEditor(filePath, displayName) {
-        try {
-            if (!monacoEditor) {
-                // Switch to editor tab first
-                const editorTabBtn = document.querySelector('[data-tab="editor"]');
-                if (editorTabBtn) {
-                    editorTabBtn.click();
-                    // Wait for editor to initialize
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-            }
-
-            if (window.electronAPI && window.electronAPI.readFile) {
-                const result = await window.electronAPI.readFile(filePath);
-                if (result.success && monacoEditor) {
-                    currentFilePath = filePath;
-                    
-                    // Determine language from file extension
-                    const language = getLanguageFromFile(filePath);
-                    
-                    // Set editor content and language
-                    monacoEditor.setValue(result.content);
-                    monaco.editor.setModelLanguage(monacoEditor.getModel(), language);
-                    
-                    // Update editor tab title
-                    updateEditorTabTitle(displayName);
-                    
-                    console.log(`Loaded ${filePath} in editor`);
-                } else {
-                    console.error('Failed to read file:', result.error);
-                }
-            }
-        } catch (error) {
-            console.error('Error loading file:', error);
-        }
-    }
-
-    function getLanguageFromFile(filePath) {
-        const ext = filePath.split('.').pop().toLowerCase();
-        const languageMap = {
-            'js': 'javascript',
-            'css': 'css',
-            'html': 'html',
-            'json': 'json',
-            'md': 'markdown',
-            'txt': 'plaintext'
-        };
-        return languageMap[ext] || 'plaintext';
-    }
-
-    function updateEditorTabTitle(fileName) {
-        const editorTabBtn = document.querySelector('[data-tab="editor"]');
-        if (editorTabBtn) {
-            editorTabBtn.textContent = `Editor: ${fileName.replace('📄 ', '')}`;
-        }
-    }
-
-    // Initialize file click handlers
-    addFileClickHandlers();
-
-    // Add keyboard shortcut for saving (Ctrl/Cmd + S)
-    document.addEventListener('keydown', async (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 's' && currentFilePath && monacoEditor) {
-            e.preventDefault();
-            await saveCurrentFile();
-        }
-    });
-
-    async function saveCurrentFile() {
-        if (!currentFilePath || !monacoEditor) return;
-        
-        try {
-            const content = monacoEditor.getValue();
-            if (window.electronAPI && window.electronAPI.writeFile) {
-                const result = await window.electronAPI.writeFile(currentFilePath, content);
-                if (result.success) {
-                    console.log(`Saved ${currentFilePath}`);
-                    // Could show a toast notification here
-                } else {
-                    console.error('Failed to save file:', result.error);
-                }
-            }
-        } catch (error) {
-            console.error('Error saving file:', error);
-        }
     }
 
     console.log('Application initialized');
