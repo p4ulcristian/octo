@@ -167,20 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Hide BrowserView by sending empty/invisible bounds
-    function hideBrowserView() {
-        if (window.electronAPI && window.electronAPI.sendBrowserMountBounds) {
-            window.electronAPI.sendBrowserMountBounds({
-                x: -1000,
-                y: -1000,
-                width: 0,
-                height: 0
-            });
-        }
-    }
-
-    // Hide browser view immediately
-    setTimeout(hideBrowserView, 100);
+    // Browser mount bounds will be updated when preview panes are created
 
 
     // CodeMirror Editor
@@ -428,6 +415,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Content instances for each type
+    const contentInstances = {
+        terminals: {},
+        claudeTerminals: {},
+        editors: {},
+        previews: {}
+    };
+    
     // Initialize circle button functionality
     function initializeCircleButtons() {
         const circles = document.querySelectorAll('.circle');
@@ -440,20 +435,268 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 console.log(`Selected ${contentType} for pane ${paneId}`);
                 
-                // Clear the pane and show selected content type
-                pane.innerHTML = `<div class="selected-content">${contentType.toUpperCase()}</div>`;
+                // Clear the pane
+                pane.innerHTML = '';
                 
-                // Style the selected content
-                const selectedDiv = pane.querySelector('.selected-content');
-                selectedDiv.style.display = 'flex';
-                selectedDiv.style.alignItems = 'center';
-                selectedDiv.style.justifyContent = 'center';
-                selectedDiv.style.height = '100%';
-                selectedDiv.style.fontSize = '24px';
-                selectedDiv.style.fontWeight = 'bold';
-                selectedDiv.style.color = getContentColor(contentType);
+                // Initialize the appropriate content
+                switch(contentType) {
+                    case 'terminal':
+                        initializeTerminalInPane(pane, paneId);
+                        break;
+                    case 'claude':
+                        initializeClaudeInPane(pane, paneId);
+                        break;
+                    case 'editor':
+                        initializeEditorInPane(pane, paneId);
+                        break;
+                    case 'preview':
+                        initializePreviewInPane(pane, paneId);
+                        break;
+                }
             });
         });
+    }
+    
+    function initializeTerminalInPane(pane, paneId) {
+        const terminalDiv = document.createElement('div');
+        terminalDiv.id = `terminal-${paneId}`;
+        terminalDiv.style.height = '100%';
+        terminalDiv.style.width = '100%';
+        pane.appendChild(terminalDiv);
+        
+        const terminal = new Terminal({
+            cols: 80,
+            rows: 24,
+            fontSize: 14,
+            fontFamily: 'Consolas, "Courier New", monospace',
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#ffffff'
+            }
+        });
+        
+        terminal.open(terminalDiv);
+        contentInstances.terminals[paneId] = terminal;
+        
+        // Start the terminal process
+        if (window.electronAPI && window.electronAPI.terminalStart) {
+            window.electronAPI.terminalStart().then(() => {
+                console.log('Terminal process started for', paneId);
+            }).catch(error => {
+                console.error('Failed to start terminal:', error);
+                terminal.write('Failed to start terminal process\r\n');
+            });
+            
+            // Listen for output from the terminal process
+            window.electronAPI.onTerminalOutput((data) => {
+                terminal.write(data);
+            });
+            
+            // Send input directly to PTY (no local echo needed)
+            terminal.onData(data => {
+                if (window.electronAPI && window.electronAPI.terminalWrite) {
+                    window.electronAPI.terminalWrite(data);
+                }
+            });
+            
+            // Handle terminal resize
+            terminal.onResize(({ cols, rows }) => {
+                if (window.electronAPI && window.electronAPI.terminalResize) {
+                    window.electronAPI.terminalResize(cols, rows);
+                }
+            });
+        } else {
+            // Fallback to echo mode if no terminal API
+            terminal.write('Terminal API not available - echo mode\r\n$ ');
+            let currentLine = '';
+            terminal.onData(data => {
+                if (data === '\r') {
+                    terminal.write('\r\n');
+                    if (currentLine.trim()) {
+                        terminal.write(`You typed: ${currentLine}\r\n`);
+                    }
+                    currentLine = '';
+                    terminal.write('$ ');
+                } else if (data === '\u007f') {
+                    if (currentLine.length > 0) {
+                        currentLine = currentLine.slice(0, -1);
+                        terminal.write('\b \b');
+                    }
+                } else {
+                    currentLine += data;
+                    terminal.write(data);
+                }
+            });
+        }
+    }
+    
+    function initializeClaudeInPane(pane, paneId) {
+        const claudeDiv = document.createElement('div');
+        claudeDiv.id = `claude-${paneId}`;
+        claudeDiv.style.height = '100%';
+        claudeDiv.style.width = '100%';
+        pane.appendChild(claudeDiv);
+        
+        const claudeTerminal = new Terminal({
+            cols: 80,
+            rows: 24,
+            fontSize: 14,
+            fontFamily: 'Consolas, "Courier New", monospace',
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#66ccff'
+            }
+        });
+        
+        claudeTerminal.open(claudeDiv);
+        contentInstances.claudeTerminals[paneId] = claudeTerminal;
+        
+        // Start the Claude terminal process
+        if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
+            window.electronAPI.claudeTerminalStart().then(() => {
+                console.log('Claude terminal process started for', paneId);
+            }).catch(error => {
+                console.error('Failed to start Claude terminal:', error);
+                claudeTerminal.write('Failed to start Claude terminal process\r\n');
+            });
+            
+            // Listen for output from the Claude terminal process
+            window.electronAPI.onClaudeTerminalOutput((data) => {
+                claudeTerminal.write(data);
+            });
+            
+            // Send input directly to PTY (no local echo needed)
+            claudeTerminal.onData(data => {
+                if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
+                    window.electronAPI.claudeTerminalWrite(data);
+                }
+            });
+            
+            // Handle Claude terminal resize
+            claudeTerminal.onResize(({ cols, rows }) => {
+                if (window.electronAPI && window.electronAPI.claudeTerminalResize) {
+                    window.electronAPI.claudeTerminalResize(cols, rows);
+                }
+            });
+        } else {
+            // Fallback to echo mode if no terminal API
+            claudeTerminal.write('Claude Terminal API not available - echo mode\r\n$ ');
+            let currentLine = '';
+            claudeTerminal.onData(data => {
+                if (data === '\r') {
+                    claudeTerminal.write('\r\n');
+                    if (currentLine.trim()) {
+                        claudeTerminal.write(`You typed: ${currentLine}\r\n`);
+                    }
+                    currentLine = '';
+                    claudeTerminal.write('$ ');
+                } else if (data === '\u007f') {
+                    if (currentLine.length > 0) {
+                        currentLine = currentLine.slice(0, -1);
+                        claudeTerminal.write('\b \b');
+                    }
+                } else {
+                    currentLine += data;
+                    claudeTerminal.write(data);
+                }
+            });
+        }
+    }
+    
+    function initializeEditorInPane(pane, paneId) {
+        const editorDiv = document.createElement('div');
+        editorDiv.id = `editor-${paneId}`;
+        editorDiv.style.height = '100%';
+        editorDiv.style.width = '100%';
+        pane.appendChild(editorDiv);
+        
+        // Create CodeMirror editor
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js';
+        script.onload = () => {
+            const jsMode = document.createElement('script');
+            jsMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js';
+            jsMode.onload = () => {
+                const editor = CodeMirror(editorDiv, {
+                    value: `// Editor in ${paneId}\nfunction hello() {\n  console.log("Hello from ${paneId}!");\n}`,
+                    mode: 'javascript',
+                    theme: 'dracula',
+                    lineNumbers: true,
+                    autoCloseBrackets: true,
+                    matchBrackets: true,
+                    indentUnit: 2,
+                    tabSize: 2
+                });
+                contentInstances.editors[paneId] = editor;
+                console.log('CodeMirror editor initialized for', paneId);
+            };
+            document.head.appendChild(jsMode);
+        };
+        document.head.appendChild(script);
+        
+        // Load CSS if not already loaded
+        if (!document.querySelector('link[href*="codemirror.min.css"]')) {
+            const cssLink = document.createElement('link');
+            cssLink.rel = 'stylesheet';
+            cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css';
+            document.head.appendChild(cssLink);
+            
+            const themeCss = document.createElement('link');
+            themeCss.rel = 'stylesheet';
+            themeCss.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css';
+            document.head.appendChild(themeCss);
+        }
+    }
+    
+    function initializePreviewInPane(pane, paneId) {
+        const previewDiv = document.createElement('div');
+        previewDiv.id = `preview-${paneId}`;
+        previewDiv.style.height = '100%';
+        previewDiv.style.width = '100%';
+        pane.appendChild(previewDiv);
+        
+        // Create browser controls
+        const browserControls = document.createElement('div');
+        browserControls.className = 'browser-controls';
+        browserControls.innerHTML = `
+            <button class="btn-icon" title="Back">←</button>
+            <button class="btn-icon" title="Forward">→</button>
+            <button class="btn-icon" title="Refresh">⟳</button>
+            <input type="text" class="url-bar" value="https://localhost/customize" placeholder="Enter URL...">
+            <button class="btn btn-primary">Go</button>
+            <button class="btn btn-secondary">DevTools</button>
+        `;
+        previewDiv.appendChild(browserControls);
+        
+        // Create browser mount area
+        const browserMount = document.createElement('div');
+        browserMount.className = 'browser-mount';
+        browserMount.id = `browser-mount-${paneId}`;
+        browserMount.style.flex = '1';
+        browserMount.style.position = 'relative';
+        browserMount.style.background = '#f9f9f9';
+        browserMount.style.border = '2px dashed #ccc';
+        browserMount.innerHTML = '<div class="browser-placeholder"><p>Loading browser...</p></div>';
+        previewDiv.appendChild(browserMount);
+        
+        // Send browser mount bounds for this specific pane
+        function updateBrowserMountBounds() {
+            const rect = browserMount.getBoundingClientRect();
+            if (window.electronAPI && window.electronAPI.sendBrowserMountBounds) {
+                window.electronAPI.sendBrowserMountBounds({
+                    x: rect.left,
+                    y: rect.top,
+                    width: rect.width,
+                    height: rect.height
+                });
+            }
+        }
+        
+        // Update bounds after a short delay to ensure proper positioning
+        setTimeout(updateBrowserMountBounds, 100);
+        
+        contentInstances.previews[paneId] = { previewDiv, browserMount, updateBounds: updateBrowserMountBounds };
+        console.log('Preview with browser controls initialized for', paneId);
     }
     
     function getContentColor(type) {

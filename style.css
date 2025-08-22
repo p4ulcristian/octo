@@ -130,6 +130,42 @@ header h1 {
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
+/* Browser Styles */
+.browser-controls {
+    display: flex;
+    gap: 5px;
+    padding: 8px;
+    background: #f8f8f8;
+    border-bottom: 1px solid #ddd;
+    align-items: center;
+}
+
+.url-bar {
+    flex: 1;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.url-bar:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.browser-mount {
+    flex: 1;
+    position: relative;
+    background: #f9f9f9;
+    border: 2px dashed #ccc;
+    height: 100%;
+}
+
+.browser-placeholder {
+    text-align: center;
+    color: #999;
+}
+
 /* Splitpanes splitter customization */
 .splitpanes--horizontal > .splitpanes__splitter {
     background-color: #3e3e42;
