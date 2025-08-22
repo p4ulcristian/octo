@@ -65,6 +65,9 @@ header h1 {
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 #terminal-claude-pane {
@@ -76,6 +79,55 @@ header h1 {
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+.circle-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 20px;
+    padding: 20px;
+}
+
+.circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+}
+
+.circle[data-type="claude"] {
+    background: #66ccff;
+}
+
+.circle[data-type="editor"] {
+    background: #67ea94;
+}
+
+.circle[data-type="terminal"] {
+    background: #ff6b6b;
+}
+
+.circle[data-type="preview"] {
+    background: #ffd93d;
+    color: #333;
+}
+
+.circle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 /* Splitpanes splitter customization */

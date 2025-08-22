@@ -428,7 +428,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // All panes are empty - no components to initialize
+    // Initialize circle button functionality
+    function initializeCircleButtons() {
+        const circles = document.querySelectorAll('.circle');
+        
+        circles.forEach(circle => {
+            circle.addEventListener('click', (e) => {
+                const contentType = e.target.getAttribute('data-type');
+                const pane = e.target.closest('.pane');
+                const paneId = pane.id;
+                
+                console.log(`Selected ${contentType} for pane ${paneId}`);
+                
+                // Clear the pane and show selected content type
+                pane.innerHTML = `<div class="selected-content">${contentType.toUpperCase()}</div>`;
+                
+                // Style the selected content
+                const selectedDiv = pane.querySelector('.selected-content');
+                selectedDiv.style.display = 'flex';
+                selectedDiv.style.alignItems = 'center';
+                selectedDiv.style.justifyContent = 'center';
+                selectedDiv.style.height = '100%';
+                selectedDiv.style.fontSize = '24px';
+                selectedDiv.style.fontWeight = 'bold';
+                selectedDiv.style.color = getContentColor(contentType);
+            });
+        });
+    }
+    
+    function getContentColor(type) {
+        switch(type) {
+            case 'claude': return '#66ccff';
+            case 'editor': return '#67ea94';
+            case 'terminal': return '#ff6b6b';
+            case 'preview': return '#ffd93d';
+            default: return '#cccccc';
+        }
+    }
+    
+    // Initialize circle buttons
+    setTimeout(initializeCircleButtons, 200);
 
     console.log('Application initialized');
 });
