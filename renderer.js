@@ -1107,21 +1107,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (devtoolsBtn) {
             let devToolsOpen = false;
             
-            devtoolsBtn.addEventListener('click', () => {
-                console.log('DevTools button clicked - toggling DevTools');
-                if (window.electronAPI && window.electronAPI.browserDevTools) {
-                    window.electronAPI.browserDevTools();
+            // Function to switch to browser tab
+            function focusBrowserTab() {
+                if (goldenLayout && goldenLayout.root) {
+                    function findBrowserTab(item) {
+                        if (item.type === 'component' && item.config.componentName === 'preview') {
+                            return item;
+                        }
+                        if (item.contentItems && item.contentItems.length > 0) {
+                            for (let child of item.contentItems) {
+                                const browser = findBrowserTab(child);
+                                if (browser) return browser;
+                            }
+                        }
+                        return null;
+                    }
                     
-                    // Toggle the button state
-                    devToolsOpen = !devToolsOpen;
-                    if (devToolsOpen) {
-                        devtoolsBtn.classList.add('active');
-                        devtoolsBtn.title = 'Close DevTools';
-                    } else {
-                        devtoolsBtn.classList.remove('active');
-                        devtoolsBtn.title = 'Open DevTools';
+                    const browserTab = findBrowserTab(goldenLayout.root);
+                    if (browserTab && browserTab.parent) {
+                        browserTab.parent.setActiveContentItem(browserTab);
+                        return true;
                     }
                 }
+                return false;
+            }
+            
+            devtoolsBtn.addEventListener('click', () => {
+                console.log('DevTools button clicked - switching to browser and toggling DevTools');
+                
+                // First switch to browser tab
+                const browserFound = focusBrowserTab();
+                
+                // Wait a bit for tab switch, then toggle DevTools
+                setTimeout(() => {
+                    if (window.electronAPI && window.electronAPI.browserDevTools) {
+                        window.electronAPI.browserDevTools();
+                        
+                        // Toggle the button state
+                        devToolsOpen = !devToolsOpen;
+                        if (devToolsOpen) {
+                            devtoolsBtn.classList.add('active');
+                            devtoolsBtn.title = 'Close DevTools';
+                        } else {
+                            devtoolsBtn.classList.remove('active');
+                            devtoolsBtn.title = 'Open DevTools';
+                        }
+                    }
+                }, browserFound ? 100 : 0);
             });
             
             // Initialize title
