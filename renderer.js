@@ -1973,6 +1973,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function createNewExplorerTab() {
+        const explorerId = 'explorer-' + Date.now();
+        
+        const newItemConfig = {
+            type: 'component',
+            componentName: 'explorer',
+            componentState: { 
+                id: explorerId
+            },
+            title: 'Explorer'
+        };
+        
+        // Find any available stack to add the explorer tab to
+        if (goldenLayout && goldenLayout.root) {
+            function findStack(item) {
+                if (item.type === 'stack') {
+                    return item;
+                }
+                if (item.contentItems && item.contentItems.length > 0) {
+                    for (let child of item.contentItems) {
+                        const stack = findStack(child);
+                        if (stack) return stack;
+                    }
+                }
+                return null;
+            }
+            
+            const stack = findStack(goldenLayout.root);
+            if (stack) {
+                stack.addChild(newItemConfig);
+                console.log('Explorer tab added to existing stack');
+            } else {
+                console.error('No stack found to add explorer tab to');
+            }
+        }
+    }
+
     function createNewTerminalTab() {
         const terminalId = 'terminal-' + Date.now();
         
@@ -2335,9 +2372,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Add click handlers
         if (explorerBtn) {
             explorerBtn.addEventListener('click', () => {
-                if (switchToTab('explorer')) {
-                    updateActiveTabButton('explorer');
-                }
+                createNewExplorerTab();
+                updateActiveTabButton('explorer');
             });
         }
         
