@@ -831,18 +831,29 @@ footer {
     padding: 8px 0;
 }
 
-.file-list {
+.file-list, .file-sublist {
     padding: 0 4px;
 }
 
 .file-item {
     display: flex;
     align-items: center;
-    padding: 4px 8px;
+    padding: 4px 4px;
     cursor: default;
     border-radius: 3px;
     margin: 1px 0;
     transition: background-color 0.2s;
+    position: relative;
+}
+
+.expand-icon {
+    width: 12px;
+    text-align: center;
+    font-size: 10px;
+    color: #858585;
+    margin-right: 4px;
+    transition: transform 0.2s;
+    user-select: none;
 }
 
 .file-item.file {
@@ -860,6 +871,8 @@ footer {
 .file-icon {
     margin-right: 6px;
     font-size: 12px;
+    width: 14px;
+    text-align: center;
 }
 
 .file-name {
@@ -893,6 +906,19 @@ footer {
     flex: 1;
     height: 100%;
     background: #1e1e1e;
+    display: flex;
+    flex-direction: column;
+}
+
+/* CodeMirror height fix */
+.CodeMirror {
+    height: 100% !important;
+    flex: 1;
+    font-size: 14px;
+}
+
+.CodeMirror-scroll {
+    height: 100% !important;
 }
 
 /* Loading Content */

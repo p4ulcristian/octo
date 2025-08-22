@@ -752,8 +752,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     autoCloseBrackets: true,
                     matchBrackets: true,
                     indentUnit: 2,
-                    tabSize: 2
+                    tabSize: 2,
+                    viewportMargin: Infinity
                 });
+                
+                // Force CodeMirror to refresh and take full height
+                setTimeout(() => {
+                    editor.refresh();
+                    editor.setSize(null, '100%');
+                }, 100);
+                
+                // Add resize observer to refresh CodeMirror when pane is resized
+                if (window.ResizeObserver) {
+                    const resizeObserver = new ResizeObserver(() => {
+                        setTimeout(() => {
+                            editor.refresh();
+                            editor.setSize(null, '100%');
+                        }, 10);
+                    });
+                    resizeObserver.observe(editorDiv);
+                }
+                
                 contentInstances.editors[paneId] = editor;
                 console.log('CodeMirror editor initialized for', paneId);
             };
@@ -901,9 +920,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    function renderFileTree(files, container, paneId) {
+    function renderFileTree(files, container, paneId, level = 0) {
         if (!files || files.length === 0) {
-            container.innerHTML = '<div class="empty">No files found</div>';
+            if (level === 0) {
+                container.innerHTML = '<div class="empty">No files found</div>';
+            }
             return;
         }
         
@@ -915,19 +936,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         const fileList = document.createElement('div');
-        fileList.className = 'file-list';
+        fileList.className = level === 0 ? 'file-list' : 'file-sublist';
         
         files.forEach(file => {
             if (file.name.startsWith('.')) return; // Skip hidden files
             
             const fileItem = document.createElement('div');
             fileItem.className = `file-item ${file.isDirectory ? 'directory' : 'file'}`;
+            fileItem.style.paddingLeft = `${8 + (level * 16)}px`;
+            fileItem.dataset.path = file.path;
+            fileItem.dataset.expanded = 'false';
+            
+            const expandIcon = file.isDirectory ? 
+                '<span class="expand-icon">▶</span>' : 
+                '<span class="expand-icon"></span>';
+            
             fileItem.innerHTML = `
+                ${expandIcon}
                 <span class="file-icon">${file.isDirectory ? '📁' : '📄'}</span>
                 <span class="file-name">${file.name}</span>
             `;
             
-            if (!file.isDirectory) {
+            if (file.isDirectory) {
+                fileItem.addEventListener('click', () => toggleDirectory(fileItem, paneId));
+                fileItem.style.cursor = 'pointer';
+            } else {
                 fileItem.addEventListener('click', () => openFile(file.path, paneId));
                 fileItem.style.cursor = 'pointer';
             }
@@ -935,7 +968,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             fileList.appendChild(fileItem);
         });
         
-        container.innerHTML = '';
+        if (level === 0) {
+            container.innerHTML = '';
+        }
         container.appendChild(fileList);
     }
     
@@ -965,6 +1000,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error opening file:', error);
             alert(`Error opening file: ${error.message}`);
+        }
+    }
+    
+    async function toggleDirectory(directoryItem, paneId) {
+        const path = directoryItem.dataset.path;
+        const isExpanded = directoryItem.dataset.expanded === 'true';
+        const expandIcon = directoryItem.querySelector('.expand-icon');
+        
+        if (isExpanded) {
+            // Collapse directory
+            directoryItem.dataset.expanded = 'false';
+            expandIcon.textContent = '▶';
+            
+            // Remove all child items
+            let nextSibling = directoryItem.nextElementSibling;
+            while (nextSibling && nextSibling.classList.contains('file-sublist')) {
+                const toRemove = nextSibling;
+                nextSibling = nextSibling.nextElementSibling;
+                toRemove.remove();
+            }
+        } else {
+            // Expand directory
+            try {
+                directoryItem.dataset.expanded = 'true';
+                expandIcon.textContent = '▼';
+                
+                const files = await window.electronAPI.listFiles(path);
+                if (files && files.length > 0) {
+                    const level = (directoryItem.style.paddingLeft.replace('px', '') - 8) / 16 + 1;
+                    const subContainer = document.createElement('div');
+                    renderFileTree(files, subContainer, paneId, level);
+                    
+                    // Insert after the directory item
+                    directoryItem.parentNode.insertBefore(subContainer.firstChild, directoryItem.nextSibling);
+                }
+            } catch (error) {
+                console.error('Error loading directory:', error);
+                expandIcon.textContent = '▶';
+                directoryItem.dataset.expanded = 'false';
+            }
         }
     }
     
