@@ -817,11 +817,124 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    function showScriptPopup(buttonElement, updateButtonCallback) {
+        // Remove any existing popup
+        const existingPopup = document.querySelector('.script-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+            // Show browser view again when closing popup
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+            return; // Toggle behavior - close if already open
+        }
+        
+        // Hide browser view temporarily so popup can be seen
+        if (window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView();
+        }
+        
+        // Load existing script from localStorage
+        const savedScript = localStorage.getItem('octo-script') || '';
+        
+        // Create popup
+        const popup = document.createElement('div');
+        popup.className = 'script-popup';
+        popup.innerHTML = `
+            <div class="script-popup-content">
+                <h3>Script Editor</h3>
+                <textarea id="script-textarea" placeholder="Enter your script here...">${savedScript}</textarea>
+                <div class="script-popup-buttons">
+                    <button id="script-save-btn" class="btn btn-primary">Save</button>
+                    <button id="script-cancel-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        
+        // Position popup relative to button
+        const buttonRect = buttonElement.getBoundingClientRect();
+        console.log('Button position:', buttonRect);
+        
+        // Position the popup content directly
+        const popupContent = popup.querySelector('.script-popup-content');
+        popupContent.style.position = 'fixed';
+        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
+        popupContent.style.left = buttonRect.left + 'px';
+        popupContent.style.zIndex = '10000';
+        
+        // Add event listeners
+        const saveBtn = popup.querySelector('#script-save-btn');
+        const cancelBtn = popup.querySelector('#script-cancel-btn');
+        const textarea = popup.querySelector('#script-textarea');
+        
+        saveBtn.addEventListener('click', () => {
+            const scriptContent = textarea.value;
+            console.log('Saving script:', scriptContent);
+            
+            // Save to localStorage
+            localStorage.setItem('octo-script', scriptContent);
+            
+            // Show success feedback
+            saveBtn.textContent = 'Saved!';
+            saveBtn.style.background = '#67ea94';
+            setTimeout(() => {
+                popup.remove();
+                // Update button appearance after saving
+                if (updateButtonCallback) {
+                    updateButtonCallback();
+                }
+                // Show browser view again when closing popup
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+            }, 500);
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            popup.remove();
+            // Show browser view again when closing popup
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+        });
+        
+        // Close popup when clicking outside
+        document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target) && e.target !== buttonElement) {
+                popup.remove();
+                // Show browser view again when closing popup
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+                document.removeEventListener('click', closePopup);
+            }
+        });
+        
+        // Focus textarea
+        textarea.focus();
+    }
+    
     // Initialize header buttons
     function initializeHeaderButtons() {
         const playBtn = document.getElementById('play-btn');
         const scriptBtn = document.getElementById('script-btn');
         const devtoolsBtn = document.getElementById('devtools-btn');
+        
+        // Check if there's a saved script and update button appearance
+        function updateScriptButtonAppearance() {
+            const savedScript = localStorage.getItem('octo-script');
+            if (savedScript && savedScript.trim()) {
+                scriptBtn.style.background = '#67ea94';
+                scriptBtn.style.color = '#1e1e1e';
+                scriptBtn.title = 'Script (saved)';
+            } else {
+                scriptBtn.style.background = '';
+                scriptBtn.style.color = '';
+                scriptBtn.title = 'Script';
+            }
+        }
         
         if (playBtn) {
             playBtn.addEventListener('click', () => {
@@ -830,8 +943,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         if (scriptBtn) {
-            scriptBtn.addEventListener('click', () => {
-                console.log('Script button clicked - TODO: implement script functionality');
+            updateScriptButtonAppearance();
+            
+            scriptBtn.addEventListener('click', (e) => {
+                console.log('Script button clicked - showing popup');
+                showScriptPopup(e.target, updateScriptButtonAppearance);
             });
         }
         

@@ -98,6 +98,20 @@ function createWindow() {
     }
   });
 
+  ipcMain.on('hide-browser-view', () => {
+    if (browserView && mainWindow) {
+      mainWindow.removeBrowserView(browserView);
+    }
+  });
+
+  ipcMain.on('show-browser-view', () => {
+    if (browserView && mainWindow) {
+      mainWindow.addBrowserView(browserView);
+      // Restore the bounds - we'll need to get them from the renderer
+      // For now, just add it back and the renderer will update bounds
+    }
+  });
+
   browserView.webContents.on('did-navigate', (event, url) => {
     mainWindow.webContents.send('browser-navigated', url);
   });

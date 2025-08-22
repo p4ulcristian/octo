@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   browserForward: () => ipcRenderer.send('browser-forward'),
   browserRefresh: () => ipcRenderer.send('browser-refresh'),
   browserDevTools: () => ipcRenderer.send('browser-devtools'),
+  hideBrowserView: () => ipcRenderer.send('hide-browser-view'),
+  showBrowserView: () => ipcRenderer.send('show-browser-view'),
   onBrowserNavigated: (callback) => {
     ipcRenderer.on('browser-navigated', (event, url) => callback(url));
   },
