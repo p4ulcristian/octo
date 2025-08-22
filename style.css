@@ -15,69 +15,84 @@ body {
 .container {
     height: 100vh;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
 }
 
-.top-bar {
+.sidebar {
+    width: 60px;
+    background: #252526;
+    border-right: 1px solid #3e3e42;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.sidebar-header {
     background: #2d2d30;
     border-bottom: 1px solid #3e3e42;
-    padding: 8px 16px;
-    height: 35px;
+    width: 60px;
+    height: 60px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
 }
 
-.top-bar-buttons {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-}
-
-.top-bar-btn {
-    background: #3e3e42;
-    border: 1px solid #4e4e52;
-    color: #cccccc;
-    padding: 4px 8px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 12px;
+.sidebar-header-content {
     display: flex;
     align-items: center;
-    gap: 4px;
-    transition: all 0.2s ease;
-    min-width: 24px;
-    height: 24px;
     justify-content: center;
+    width: 100%;
+    height: 100%;
 }
 
-.top-bar-btn:hover {
-    background: #4e4e52;
-    border-color: #0e639c;
+.sidebar-buttons {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    gap: 4px;
+    align-items: center;
+}
+
+.sidebar-btn {
+    background: transparent;
+    border: none;
+    color: #cccccc;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    font-size: 18px;
+    margin: 0 8px;
+}
+
+.sidebar-btn:hover {
+    background: #2d2d30;
     color: #ffffff;
 }
 
-.top-bar-btn:active {
+.sidebar-btn:active {
     background: #0e639c;
-    transform: translateY(1px);
+    transform: scale(0.95);
 }
 
 #app-name {
     color: #67ea94;
     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     font-weight: 700;
-    letter-spacing: 1px;
+    font-size: 24px;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    display: block;
 }
 
 /* Golden Layout Container */
 #golden-layout-container {
     flex: 1;
-    height: calc(100vh - 35px);
-    width: 100%;
+    height: 100vh;
+    width: calc(100vw - 60px);
 }
 
 /* Golden Layout Theme Overrides */
@@ -581,7 +596,7 @@ body {
 /* File Save Notification */
 .save-notification {
     position: fixed;
-    top: 50px;
+    top: 20px;
     right: 20px;
     background: #67ea94;
     color: #1e1e1e;
