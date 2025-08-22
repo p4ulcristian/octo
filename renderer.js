@@ -741,19 +741,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js';
         script.onload = () => {
+            // Load multiple language modes
             const jsMode = document.createElement('script');
             jsMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js';
-            jsMode.onload = () => {
+            
+            const clojureMode = document.createElement('script');
+            clojureMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clojure/clojure.min.js';
+            
+            const cssMode = document.createElement('script');
+            cssMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js';
+            
+            const xmlMode = document.createElement('script');
+            xmlMode.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js';
+            
+            let modesLoaded = 0;
+            const totalModes = 4;
+            
+            function onModeLoaded() {
+                modesLoaded++;
+                if (modesLoaded === totalModes) {
+                    initializeEditor();
+                }
+            }
+            
+            jsMode.onload = onModeLoaded;
+            clojureMode.onload = onModeLoaded;
+            cssMode.onload = onModeLoaded;
+            xmlMode.onload = onModeLoaded;
+            
+            document.head.appendChild(jsMode);
+            document.head.appendChild(clojureMode);
+            document.head.appendChild(cssMode);
+            document.head.appendChild(xmlMode);
+            
+            function initializeEditor() {
                 const editor = CodeMirror(editorDiv, {
-                    value: `// Editor in ${paneId}\n// Select a file from the explorer to edit`,
-                    mode: 'javascript',
+                    value: `;; Editor in ${paneId}\n;; Select a file from the explorer to edit\n(println "Hello from Octo!")`,
+                    mode: 'clojure',
                     theme: 'dracula',
                     lineNumbers: true,
                     autoCloseBrackets: true,
                     matchBrackets: true,
                     indentUnit: 2,
                     tabSize: 2,
-                    viewportMargin: Infinity
+                    viewportMargin: Infinity,
+                    // Clojure-specific options
+                    autoCloseTags: true,
+                    showHint: true,
+                    electricChars: true
                 });
                 
                 // Force CodeMirror to refresh and take full height
@@ -775,8 +810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 contentInstances.editors[paneId] = editor;
                 console.log('CodeMirror editor initialized for', paneId);
-            };
-            document.head.appendChild(jsMode);
+            }
         };
         document.head.appendChild(script);
         
@@ -991,6 +1025,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     case 'css': mode = 'css'; break;
                     case 'json': mode = 'javascript'; break;
                     case 'md': mode = 'markdown'; break;
+                    case 'clj': mode = 'clojure'; break;
+                    case 'cljs': mode = 'clojure'; break;
+                    case 'cljc': mode = 'clojure'; break;
+                    case 'edn': mode = 'clojure'; break;
                     default: mode = 'text';
                 }
                 editor.setOption('mode', mode);
