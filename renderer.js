@@ -1482,6 +1482,93 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    function saveActiveFile() {
+        if (goldenLayout && goldenLayout.root) {
+            function findActiveTab(item) {
+                if (item.type === 'stack' && item.getActiveContentItem()) {
+                    return item.getActiveContentItem();
+                }
+                if (item.contentItems && item.contentItems.length > 0) {
+                    for (let child of item.contentItems) {
+                        const activeTab = findActiveTab(child);
+                        if (activeTab) return activeTab;
+                    }
+                }
+                return null;
+            }
+            
+            const activeTab = findActiveTab(goldenLayout.root);
+            
+            if (activeTab && activeTab.config.componentName === 'editor') {
+                const componentId = activeTab.config.componentState.id;
+                const editorInstance = contentInstances.editors[componentId];
+                
+                if (editorInstance && editorInstance.editor) {
+                    const content = editorInstance.editor.getValue();
+                    const filePath = activeTab.config.componentState.filePath;
+                    const fileName = activeTab.config.title;
+                    
+                    if (filePath) {
+                        // Save existing file
+                        if (window.electronAPI && window.electronAPI.writeTextFile) {
+                            window.electronAPI.writeTextFile(filePath, content)
+                                .then(() => {
+                                    showSaveNotification(`Saved ${fileName}`);
+                                })
+                                .catch((error) => {
+                                    console.error('Error saving file:', error);
+                                    showSaveNotification(`Failed to save ${fileName}`, true);
+                                });
+                        } else {
+                            showSaveNotification('Save function not available', true);
+                        }
+                    } else {
+                        // New file - prompt for save location
+                        showSaveNotification('Use Save As for new files', true);
+                    }
+                } else {
+                    showSaveNotification('No editor content to save', true);
+                }
+            } else {
+                showSaveNotification('No editor tab active', true);
+            }
+        }
+    }
+
+    function closeActiveTab() {
+        if (goldenLayout && goldenLayout.root) {
+            function findActiveTab(item) {
+                if (item.type === 'stack' && item.getActiveContentItem()) {
+                    return item.getActiveContentItem();
+                }
+                if (item.contentItems && item.contentItems.length > 0) {
+                    for (let child of item.contentItems) {
+                        const activeTab = findActiveTab(child);
+                        if (activeTab) return activeTab;
+                    }
+                }
+                return null;
+            }
+            
+            const activeTab = findActiveTab(goldenLayout.root);
+            
+            if (activeTab) {
+                const componentName = activeTab.config.componentName;
+                console.log('Closing active tab:', componentName, activeTab.config.title);
+                
+                // Don't close if it's the last tab or if it's a core component that shouldn't be closed
+                const parentStack = activeTab.parent;
+                if (parentStack && parentStack.contentItems.length > 1) {
+                    activeTab.remove();
+                } else {
+                    console.log('Cannot close the last remaining tab');
+                }
+            } else {
+                console.log('No active tab found to close');
+            }
+        }
+    }
+
     function createNewEditorTab() {
         const editorId = 'editor-' + Date.now();
         const editorCount = Object.keys(contentInstances.editors).length + 1;
@@ -1581,6 +1668,53 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Error loading system info:', error);
         }
     }
+
+    // File save notification system
+    function showSaveNotification(message, isError = false) {
+        // Remove any existing notification
+        const existing = document.querySelector('.save-notification');
+        if (existing) {
+            existing.remove();
+        }
+        
+        // Create new notification
+        const notification = document.createElement('div');
+        notification.className = 'save-notification' + (isError ? ' error' : '');
+        notification.textContent = message;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Show notification
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        // Hide and remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Cmd+W (Mac) or Ctrl+W (Windows/Linux) to close active tab
+        if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+            e.preventDefault();
+            closeActiveTab();
+        }
+        
+        // Cmd+S (Mac) or Ctrl+S (Windows/Linux) to save active file
+        if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+            e.preventDefault();
+            saveActiveFile();
+        }
+    });
 
     // Initialize everything
     setTimeout(() => {

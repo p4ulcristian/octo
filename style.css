@@ -578,6 +578,34 @@ body {
     justify-content: flex-end;
 }
 
+/* File Save Notification */
+.save-notification {
+    position: fixed;
+    top: 50px;
+    right: 20px;
+    background: #67ea94;
+    color: #1e1e1e;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 10001;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+}
+
+.save-notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.save-notification.error {
+    background: #e74c3c;
+    color: #ffffff;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
