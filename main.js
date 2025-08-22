@@ -14,6 +14,7 @@ let mainWindow;
 let browserView;
 let browserMountBounds = null;
 let ptyProcess = null;
+let claudePtyProcess = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -329,6 +330,83 @@ ipcMain.handle('terminal-stop', async (event) => {
     if (ptyProcess) {
       ptyProcess.kill();
       ptyProcess = null;
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Claude Terminal handlers using node-pty (automatically runs "claude")
+ipcMain.handle('claude-terminal-start', async (event) => {
+  try {
+    if (claudePtyProcess) {
+      claudePtyProcess.kill();
+    }
+    
+    // Start PTY process with real shell
+    const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/zsh');
+    
+    claudePtyProcess = pty.spawn(shell, [], {
+      name: 'xterm-color',
+      cols: 80,
+      rows: 24,
+      cwd: process.cwd(),
+      env: process.env
+    });
+    
+    // Send output to renderer
+    claudePtyProcess.onData((data) => {
+      mainWindow.webContents.send('claude-terminal-output', data);
+    });
+    
+    claudePtyProcess.onExit((exitCode) => {
+      mainWindow.webContents.send('claude-terminal-output', `\r\nClaude terminal session ended (code ${exitCode.exitCode})\r\n`);
+      claudePtyProcess = null;
+    });
+    
+    // Auto-run "claude" command after a brief delay
+    setTimeout(() => {
+      if (claudePtyProcess) {
+        claudePtyProcess.write('claude\r');
+      }
+    }, 500);
+    
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('claude-terminal-write', async (event, data) => {
+  try {
+    if (claudePtyProcess) {
+      claudePtyProcess.write(data);
+      return { success: true };
+    }
+    return { success: false, error: 'Claude terminal not running' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('claude-terminal-resize', async (event, cols, rows) => {
+  try {
+    if (claudePtyProcess) {
+      claudePtyProcess.resize(cols, rows);
+      return { success: true };
+    }
+    return { success: false, error: 'Claude terminal not running' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('claude-terminal-stop', async (event) => {
+  try {
+    if (claudePtyProcess) {
+      claudePtyProcess.kill();
+      claudePtyProcess = null;
     }
     return { success: true };
   } catch (error) {

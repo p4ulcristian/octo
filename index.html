@@ -10,10 +10,6 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Electron Application</h1>
-            <p class="subtitle">3-pane resizable layout</p>
-        </header>
 
         <main class="main-container" id="main-container">
             <!-- Left Side Container -->
@@ -26,6 +22,7 @@
                         <button class="tab-btn" data-tab="search">Search</button>
                         <button class="tab-btn" data-tab="git">Git</button>
                         <button class="tab-btn" data-tab="terminal">Terminal</button>
+                        <button class="tab-btn" data-tab="claude">Claude</button>
                     </div>
                     <div class="panel-content">
                         <div id="editor-tab" class="tab-pane active">
@@ -52,6 +49,9 @@
                         </div>
                         <div id="terminal-tab" class="tab-pane">
                             <div id="xterm-terminal"></div>
+                        </div>
+                        <div id="claude-tab" class="tab-pane">
+                            <div id="claude-terminal"></div>
                         </div>
                     </div>
                 </div>

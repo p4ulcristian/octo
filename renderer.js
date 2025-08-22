@@ -271,6 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialize xterm.js terminal
     let terminal = null;
+    let claudeTerminal = null;
     
     function initializeTerminal() {
         const terminalElement = document.getElementById('xterm-terminal');
@@ -444,6 +445,72 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function initializeClaudeTerminal() {
+        const claudeTerminalElement = document.getElementById('claude-terminal');
+        claudeTerminal = new Terminal({
+            cols: 80,
+            rows: 24,
+            fontSize: 14,
+            fontFamily: 'Consolas, "Courier New", monospace',
+            theme: {
+                background: '#1e1e1e',
+                foreground: '#ffffff'
+            }
+        });
+        claudeTerminal.open(claudeTerminalElement);
+        
+        // Start the Claude terminal process
+        if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
+            window.electronAPI.claudeTerminalStart().then(() => {
+                console.log('Claude terminal process started');
+            }).catch(error => {
+                console.error('Failed to start Claude terminal:', error);
+                claudeTerminal.write('Failed to start Claude terminal process\\r\\n');
+            });
+            
+            // Listen for output from the Claude terminal process
+            window.electronAPI.onClaudeTerminalOutput((data) => {
+                claudeTerminal.write(data);
+            });
+            
+            // Send input directly to PTY (no local echo needed)
+            claudeTerminal.onData(data => {
+                if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
+                    window.electronAPI.claudeTerminalWrite(data);
+                }
+            });
+            
+            // Handle Claude terminal resize
+            claudeTerminal.onResize(({ cols, rows }) => {
+                if (window.electronAPI && window.electronAPI.claudeTerminalResize) {
+                    window.electronAPI.claudeTerminalResize(cols, rows);
+                }
+            });
+        } else {
+            // Fallback to echo mode if no terminal API
+            claudeTerminal.write('Claude Terminal API not available - echo mode\\r\\n$ ');
+            let currentLine = '';
+            claudeTerminal.onData(data => {
+                if (data === '\\r') {
+                    claudeTerminal.write('\\r\\n');
+                    if (currentLine.trim()) {
+                        claudeTerminal.write(`You typed: ${currentLine}\\r\\n`);
+                    }
+                    currentLine = '';
+                    claudeTerminal.write('$ ');
+                } else if (data === '\\u007f') {
+                    if (currentLine.length > 0) {
+                        currentLine = currentLine.slice(0, -1);
+                        claudeTerminal.write('\\b \\b');
+                    }
+                } else {
+                    currentLine += data;
+                    claudeTerminal.write(data);
+                }
+            });
+        }
+    }
+
     // Initialize CodeMirror when editor tab is clicked
     const editorTabBtn = document.querySelector('[data-tab="editor"]');
     if (editorTabBtn) {
@@ -462,6 +529,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => {
                 if (!terminal) {
                     initializeTerminal();
+                }
+            }, 100);
+        });
+    }
+    
+    // Initialize Claude terminal when Claude tab is clicked
+    const claudeTabBtn = document.querySelector('[data-tab="claude"]');
+    if (claudeTabBtn) {
+        claudeTabBtn.addEventListener('click', () => {
+            setTimeout(() => {
+                if (!claudeTerminal) {
+                    initializeClaudeTerminal();
                 }
             }, 100);
         });

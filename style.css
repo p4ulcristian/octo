@@ -231,6 +231,13 @@ header h1 {
     width: 100%;
 }
 
+#claude-terminal {
+    flex: 1;
+    background: #1e1e1e;
+    height: 100%;
+    width: 100%;
+}
+
 /* Browser Styles */
 .browser-controls {
     display: flex;

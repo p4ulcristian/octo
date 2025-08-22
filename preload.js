@@ -33,5 +33,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   terminalResize: (cols, rows) => ipcRenderer.invoke('terminal-resize', cols, rows),
   onTerminalOutput: (callback) => {
     ipcRenderer.on('terminal-output', (event, data) => callback(data));
+  },
+  
+  // Claude terminal functions
+  claudeTerminalStart: () => ipcRenderer.invoke('claude-terminal-start'),
+  claudeTerminalWrite: (data) => ipcRenderer.invoke('claude-terminal-write', data),
+  claudeTerminalStop: () => ipcRenderer.invoke('claude-terminal-stop'),
+  claudeTerminalResize: (cols, rows) => ipcRenderer.invoke('claude-terminal-resize', cols, rows),
+  onClaudeTerminalOutput: (callback) => {
+    ipcRenderer.on('claude-terminal-output', (event, data) => callback(data));
   }
 });
