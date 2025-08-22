@@ -112,6 +112,19 @@ function createWindow() {
     }
   });
 
+  ipcMain.handle('select-folder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: 'Select Project Folder'
+    });
+    
+    if (result.canceled) {
+      return null;
+    }
+    
+    return result.filePaths[0];
+  });
+
   browserView.webContents.on('did-navigate', (event, url) => {
     mainWindow.webContents.send('browser-navigated', url);
   });

@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   browserDevTools: () => ipcRenderer.send('browser-devtools'),
   hideBrowserView: () => ipcRenderer.send('hide-browser-view'),
   showBrowserView: () => ipcRenderer.send('show-browser-view'),
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
   onBrowserNavigated: (callback) => {
     ipcRenderer.on('browser-navigated', (event, url) => callback(url));
   },

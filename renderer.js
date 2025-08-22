@@ -565,6 +565,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.electronAPI && window.electronAPI.terminalStart) {
             window.electronAPI.terminalStart().then(() => {
                 console.log('Terminal process started for', paneId);
+                
+                // Change to project directory if set
+                const projectPath = localStorage.getItem('octo-project-path');
+                if (projectPath && projectPath.trim()) {
+                    console.log('Changing terminal directory to:', projectPath);
+                    window.electronAPI.terminalWrite(`cd "${projectPath}"\n`);
+                }
             }).catch(error => {
                 console.error('Failed to start terminal:', error);
                 terminal.write('Failed to start terminal process\r\n');
@@ -638,6 +645,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
             window.electronAPI.claudeTerminalStart().then(() => {
                 console.log('Claude terminal process started for', paneId);
+                
+                // Change to project directory if set
+                const projectPath = localStorage.getItem('octo-project-path');
+                if (projectPath && projectPath.trim()) {
+                    console.log('Changing Claude terminal directory to:', projectPath);
+                    window.electronAPI.claudeTerminalWrite(`cd "${projectPath}"\n`);
+                }
             }).catch(error => {
                 console.error('Failed to start Claude terminal:', error);
                 claudeTerminal.write('Failed to start Claude terminal process\r\n');
@@ -804,6 +818,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             isActive: true
         };
         
+        // Navigate to saved preview URL if available
+        const savedUrl = localStorage.getItem('octo-preview-url');
+        if (savedUrl && savedUrl.trim()) {
+            console.log('Navigating to saved preview URL:', savedUrl);
+            setTimeout(() => {
+                if (window.electronAPI && window.electronAPI.navigateBrowser) {
+                    window.electronAPI.navigateBrowser(savedUrl);
+                }
+            }, 1000); // Delay to ensure browser view is ready
+        }
+        
         console.log('Preview with browser controls initialized for', paneId);
     }
     
@@ -916,11 +941,255 @@ document.addEventListener('DOMContentLoaded', async () => {
         textarea.focus();
     }
     
+    function runSavedScript() {
+        const savedScript = localStorage.getItem('octo-script');
+        if (!savedScript || !savedScript.trim()) {
+            console.log('No script to run');
+            return;
+        }
+        
+        console.log('Running script:', savedScript);
+        
+        // Find an active terminal to run the script in
+        const activeTerminals = Object.entries(contentInstances.terminals).filter(([paneId, terminal]) => terminal);
+        
+        if (activeTerminals.length === 0) {
+            console.log('No active terminals found - creating one in first available pane');
+            // Find the first available pane and create a terminal
+            const panes = ['editor-top-pane', 'claude-pane', 'editor-bottom-pane', 'terminal-pane'];
+            const firstPane = document.getElementById(panes[0]);
+            if (firstPane) {
+                // Clear and initialize terminal in first pane
+                firstPane.innerHTML = '';
+                initializeTerminalInPane(firstPane, panes[0]);
+                
+                // Wait a moment for terminal to initialize, then run script
+                setTimeout(() => {
+                    executeScriptInTerminal(panes[0], savedScript);
+                }, 1000);
+            }
+        } else {
+            // Use the first active terminal
+            const [paneId] = activeTerminals[0];
+            executeScriptInTerminal(paneId, savedScript);
+        }
+    }
+    
+    function executeScriptInTerminal(paneId, script) {
+        if (window.electronAPI && window.electronAPI.terminalWrite) {
+            // Write the script to the terminal
+            console.log(`Executing script in terminal ${paneId}:`, script);
+            window.electronAPI.terminalWrite(script + '\n');
+        } else {
+            console.log('Terminal API not available');
+        }
+    }
+    
+    function showProjectPathPopup(buttonElement) {
+        // Remove any existing popup
+        const existingPopup = document.querySelector('.project-path-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+            return;
+        }
+        
+        // Hide browser view temporarily
+        if (window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView();
+        }
+        
+        // Load existing project path from localStorage
+        const savedPath = localStorage.getItem('octo-project-path') || '';
+        
+        // Create popup
+        const popup = document.createElement('div');
+        popup.className = 'project-path-popup';
+        popup.innerHTML = `
+            <div class="project-path-popup-content">
+                <h3>Project Path</h3>
+                <div class="project-path-input-group">
+                    <input type="text" id="project-path-input" placeholder="Enter project path..." value="${savedPath}">
+                    <button id="project-path-browse-btn" class="btn btn-secondary">Browse</button>
+                </div>
+                <div class="project-path-popup-buttons">
+                    <button id="project-path-save-btn" class="btn btn-primary">Save</button>
+                    <button id="project-path-cancel-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        
+        // Position popup relative to button
+        const buttonRect = buttonElement.getBoundingClientRect();
+        const popupContent = popup.querySelector('.project-path-popup-content');
+        popupContent.style.position = 'fixed';
+        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
+        popupContent.style.left = buttonRect.left + 'px';
+        popupContent.style.zIndex = '10000';
+        
+        // Add event listeners
+        const saveBtn = popup.querySelector('#project-path-save-btn');
+        const cancelBtn = popup.querySelector('#project-path-cancel-btn');
+        const browseBtn = popup.querySelector('#project-path-browse-btn');
+        const input = popup.querySelector('#project-path-input');
+        
+        saveBtn.addEventListener('click', () => {
+            const pathContent = input.value;
+            console.log('Saving project path:', pathContent);
+            localStorage.setItem('octo-project-path', pathContent);
+            
+            saveBtn.textContent = 'Saved!';
+            saveBtn.style.background = '#67ea94';
+            setTimeout(() => {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+            }, 500);
+        });
+        
+        browseBtn.addEventListener('click', async () => {
+            console.log('Browse button clicked - opening folder dialog');
+            if (window.electronAPI && window.electronAPI.selectFolder) {
+                try {
+                    const selectedPath = await window.electronAPI.selectFolder();
+                    if (selectedPath) {
+                        input.value = selectedPath;
+                        console.log('Selected folder:', selectedPath);
+                    }
+                } catch (error) {
+                    console.error('Error selecting folder:', error);
+                }
+            } else {
+                console.log('selectFolder API not available');
+            }
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            popup.remove();
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+        });
+        
+        // Close popup when clicking outside
+        document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target) && e.target !== buttonElement) {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+                document.removeEventListener('click', closePopup);
+            }
+        });
+        
+        input.focus();
+    }
+    
+    function showPreviewUrlPopup(buttonElement) {
+        // Remove any existing popup
+        const existingPopup = document.querySelector('.preview-url-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+            return;
+        }
+        
+        // Hide browser view temporarily
+        if (window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView();
+        }
+        
+        // Load existing preview URL from localStorage
+        const savedUrl = localStorage.getItem('octo-preview-url') || 'http://localhost:3000';
+        
+        // Create popup
+        const popup = document.createElement('div');
+        popup.className = 'preview-url-popup';
+        popup.innerHTML = `
+            <div class="preview-url-popup-content">
+                <h3>Preview URL</h3>
+                <input type="text" id="preview-url-input" placeholder="Enter preview URL..." value="${savedUrl}">
+                <div class="preview-url-popup-buttons">
+                    <button id="preview-url-save-btn" class="btn btn-primary">Save</button>
+                    <button id="preview-url-go-btn" class="btn btn-secondary">Go</button>
+                    <button id="preview-url-cancel-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        
+        // Position popup relative to button
+        const buttonRect = buttonElement.getBoundingClientRect();
+        const popupContent = popup.querySelector('.preview-url-popup-content');
+        popupContent.style.position = 'fixed';
+        popupContent.style.top = (buttonRect.bottom + 5) + 'px';
+        popupContent.style.left = buttonRect.left + 'px';
+        popupContent.style.zIndex = '10000';
+        
+        // Add event listeners
+        const saveBtn = popup.querySelector('#preview-url-save-btn');
+        const goBtn = popup.querySelector('#preview-url-go-btn');
+        const cancelBtn = popup.querySelector('#preview-url-cancel-btn');
+        const input = popup.querySelector('#preview-url-input');
+        
+        saveBtn.addEventListener('click', () => {
+            const urlContent = input.value;
+            console.log('Saving preview URL:', urlContent);
+            localStorage.setItem('octo-preview-url', urlContent);
+            
+            saveBtn.textContent = 'Saved!';
+            saveBtn.style.background = '#67ea94';
+            setTimeout(() => {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+            }, 500);
+        });
+        
+        goBtn.addEventListener('click', () => {
+            const urlContent = input.value;
+            console.log('Navigating to:', urlContent);
+            if (window.electronAPI && window.electronAPI.navigateBrowser) {
+                window.electronAPI.navigateBrowser(urlContent);
+            }
+            popup.remove();
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            popup.remove();
+            if (window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView();
+            }
+        });
+        
+        // Close popup when clicking outside
+        document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target) && e.target !== buttonElement) {
+                popup.remove();
+                if (window.electronAPI && window.electronAPI.showBrowserView) {
+                    window.electronAPI.showBrowserView();
+                }
+                document.removeEventListener('click', closePopup);
+            }
+        });
+        
+        input.focus();
+        input.select();
+    }
+    
     // Initialize header buttons
     function initializeHeaderButtons() {
         const playBtn = document.getElementById('play-btn');
         const scriptBtn = document.getElementById('script-btn');
         const devtoolsBtn = document.getElementById('devtools-btn');
+        const projectPathBtn = document.getElementById('project-path-btn');
+        const previewUrlBtn = document.getElementById('preview-url-btn');
         
         // Check if there's a saved script and update button appearance
         function updateScriptButtonAppearance() {
@@ -929,16 +1198,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 scriptBtn.style.background = '#67ea94';
                 scriptBtn.style.color = '#1e1e1e';
                 scriptBtn.title = 'Script (saved)';
+                
+                // Also update play button when script is available
+                if (playBtn) {
+                    playBtn.style.background = '#67ea94';
+                    playBtn.style.color = '#1e1e1e';
+                    playBtn.title = 'Run Script';
+                }
             } else {
                 scriptBtn.style.background = '';
                 scriptBtn.style.color = '';
                 scriptBtn.title = 'Script';
+                
+                // Reset play button when no script
+                if (playBtn) {
+                    playBtn.style.background = '';
+                    playBtn.style.color = '';
+                    playBtn.title = 'Play';
+                }
             }
         }
         
         if (playBtn) {
             playBtn.addEventListener('click', () => {
-                console.log('Play button clicked - TODO: implement play functionality');
+                console.log('Play button clicked - running saved script');
+                runSavedScript();
             });
         }
         
@@ -959,6 +1243,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     console.log('DevTools API not available');
                 }
+            });
+        }
+        
+        if (projectPathBtn) {
+            projectPathBtn.addEventListener('click', (e) => {
+                console.log('Project Path button clicked - showing popup');
+                showProjectPathPopup(e.target);
+            });
+        }
+        
+        if (previewUrlBtn) {
+            previewUrlBtn.addEventListener('click', (e) => {
+                console.log('Preview URL button clicked - showing popup');
+                showPreviewUrlPopup(e.target);
             });
         }
     }

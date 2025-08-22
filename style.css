@@ -590,6 +590,108 @@ footer {
     justify-content: flex-end;
 }
 
+/* Project Path Popup */
+.project-path-popup {
+    position: fixed;
+    z-index: 10000;
+}
+
+.project-path-popup-content {
+    background: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 6px;
+    padding: 15px;
+    width: 350px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.project-path-popup-content h3 {
+    color: #ffffff;
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.project-path-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.project-path-popup-content input {
+    flex: 1;
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    color: #ffffff;
+    padding: 8px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+.project-path-input-group .btn {
+    min-width: auto;
+    white-space: nowrap;
+}
+
+.project-path-popup-content input:focus {
+    outline: none;
+    border-color: #0e639c;
+}
+
+.project-path-popup-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* Preview URL Popup */
+.preview-url-popup {
+    position: fixed;
+    z-index: 10000;
+}
+
+.preview-url-popup-content {
+    background: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 6px;
+    padding: 15px;
+    width: 350px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.preview-url-popup-content h3 {
+    color: #ffffff;
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.preview-url-popup-content input {
+    width: 100%;
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    color: #ffffff;
+    padding: 8px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+.preview-url-popup-content input:focus {
+    outline: none;
+    border-color: #0e639c;
+}
+
+.preview-url-popup-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
