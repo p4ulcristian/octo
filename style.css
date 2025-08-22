@@ -334,6 +334,7 @@ header h1 {
     position: relative;
     background: #f9f9f9;
     border: 2px dashed #ccc;
+    height: 100%;
 }
 
 .browser-placeholder {
