@@ -981,42 +981,109 @@ document.addEventListener('DOMContentLoaded', async () => {
         const devtoolsBtn = document.getElementById('devtools-btn');
         const refreshBtn = document.getElementById('refresh-btn');
         
+        // Track script running state
+        let isScriptRunning = false;
+        
         // Check if there's a saved script and update button appearance
         function updateScriptButtonAppearance() {
             const savedScript = localStorage.getItem('octo-script');
             if (savedScript && savedScript.trim()) {
-                if (scriptBtn) {
-                    scriptBtn.style.background = '#67ea94';
-                    scriptBtn.style.color = '#1e1e1e';
-                    scriptBtn.title = 'Script (saved)';
-                }
-                
-                // Also update play button when script is available
-                if (playBtn) {
-                    playBtn.style.background = '#67ea94';
-                    playBtn.style.color = '#1e1e1e';
+                // Script is available - make play button green
+                if (playBtn && !isScriptRunning) {
+                    playBtn.classList.add('ready');
                     playBtn.title = 'Run Script';
                 }
             } else {
-                if (scriptBtn) {
-                    scriptBtn.style.background = '';
-                    scriptBtn.style.color = '';
-                    scriptBtn.title = 'Script';
-                }
-                
-                // Reset play button when no script
+                // No script - reset play button
                 if (playBtn) {
-                    playBtn.style.background = '';
-                    playBtn.style.color = '';
+                    playBtn.classList.remove('ready');
+                    playBtn.classList.remove('running');
                     playBtn.title = 'Play';
                 }
             }
         }
         
+        // Switch to terminal tab
+        function focusTerminalTab() {
+            if (goldenLayout && goldenLayout.root) {
+                function findTerminalTab(item) {
+                    if (item.type === 'component' && item.config.componentName === 'terminal') {
+                        return item;
+                    }
+                    if (item.contentItems && item.contentItems.length > 0) {
+                        for (let child of item.contentItems) {
+                            const terminal = findTerminalTab(child);
+                            if (terminal) return terminal;
+                        }
+                    }
+                    return null;
+                }
+                
+                const terminalTab = findTerminalTab(goldenLayout.root);
+                if (terminalTab && terminalTab.parent) {
+                    terminalTab.parent.setActiveContentItem(terminalTab);
+                }
+            }
+        }
+        
         if (playBtn) {
+            updateScriptButtonAppearance();
+            
             playBtn.addEventListener('click', () => {
-                console.log('Play button clicked - running saved script');
-                runSavedScript();
+                if (isScriptRunning) {
+                    // Stop the script
+                    console.log('Stopping script');
+                    isScriptRunning = false;
+                    
+                    // Send Ctrl+C to terminal to stop the running process
+                    if (window.electronAPI && window.electronAPI.terminalWrite) {
+                        window.electronAPI.terminalWrite('\x03'); // Ctrl+C
+                    }
+                    
+                    // Reset button appearance
+                    playBtn.innerHTML = '▶';
+                    playBtn.classList.remove('running');
+                    playBtn.classList.add('ready');
+                    playBtn.title = 'Run Script';
+                } else {
+                    // Run the script
+                    const savedScript = localStorage.getItem('octo-script');
+                    if (savedScript && savedScript.trim()) {
+                        console.log('Running saved script');
+                        isScriptRunning = true;
+                        
+                        // Change button to stop
+                        playBtn.innerHTML = '■';
+                        playBtn.classList.remove('ready');
+                        playBtn.classList.add('running');
+                        playBtn.title = 'Stop Script';
+                        
+                        // Focus terminal tab
+                        focusTerminalTab();
+                        
+                        // Wait a bit for terminal to focus, then change directory and run script
+                        setTimeout(() => {
+                            const projectPath = localStorage.getItem('octo-project-path');
+                            if (projectPath && projectPath.trim()) {
+                                console.log('Changing to project directory before running script:', projectPath);
+                                if (window.electronAPI && window.electronAPI.terminalWrite) {
+                                    window.electronAPI.terminalWrite(`cd "${projectPath}"\n`);
+                                    
+                                    // Wait for cd command to complete, then run the script
+                                    setTimeout(() => {
+                                        runSavedScript();
+                                    }, 500);
+                                }
+                            } else {
+                                // No project path set, just run the script
+                                runSavedScript();
+                            }
+                        }, 200);
+                    } else {
+                        console.log('No script saved');
+                        alert('No script saved. Use Settings to add a script.');
+                    }
+                }
             });
         }
         
@@ -1038,12 +1105,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (devtoolsBtn) {
+            let devToolsOpen = false;
+            
             devtoolsBtn.addEventListener('click', () => {
                 console.log('DevTools button clicked - toggling DevTools');
                 if (window.electronAPI && window.electronAPI.browserDevTools) {
                     window.electronAPI.browserDevTools();
+                    
+                    // Toggle the button state
+                    devToolsOpen = !devToolsOpen;
+                    if (devToolsOpen) {
+                        devtoolsBtn.classList.add('active');
+                        devtoolsBtn.title = 'Close DevTools';
+                    } else {
+                        devtoolsBtn.classList.remove('active');
+                        devtoolsBtn.title = 'Open DevTools';
+                    }
                 }
             });
+            
+            // Initialize title
+            devtoolsBtn.title = 'Open DevTools';
         }
 
     }
@@ -1131,15 +1213,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Update play button appearance if script is saved
             const playBtn = document.getElementById('play-btn');
             if (scriptInput.value.trim()) {
-                if (playBtn) {
-                    playBtn.style.background = '#67ea94';
-                    playBtn.style.color = '#1e1e1e';
+                if (playBtn && !playBtn.classList.contains('running')) {
+                    playBtn.classList.add('ready');
                     playBtn.title = 'Run Script';
                 }
             } else {
                 if (playBtn) {
-                    playBtn.style.background = '';
-                    playBtn.style.color = '';
+                    playBtn.classList.remove('ready');
+                    playBtn.classList.remove('running');
                     playBtn.title = 'Play';
                 }
             }
