@@ -724,7 +724,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             placeholder="Enter commit message..."
                             style="width: 100%; height: 60px; background: #1e1e1e; border: 1px solid #3e3e42; border-radius: 4px; color: #cccccc; font-family: monospace; font-size: 12px; padding: 8px; resize: vertical; outline: none;"
                         ></textarea>
-                        <div style="margin-top: 8px; margin-bottom: 16px; display: flex; gap: 8px;">
+                        <div style="margin-top: 8px; margin-bottom: 8px; display: flex; gap: 8px;">
                             <button 
                                 id="commit-btn-${componentId}" 
                                 style="background: #067d1a; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex: 1;"
@@ -740,6 +740,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 🚀 COMMIT ALL
                             </button>
                         </div>
+                        <div style="margin-bottom: 8px; display: flex; gap: 8px;">
+                            <button 
+                                id="pull-btn-${componentId}" 
+                                style="background: #0ea5e9; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex: 1;"
+                                title="Pull from remote"
+                            >
+                                ⬇️ PULL
+                            </button>
+                            <button 
+                                id="push-btn-${componentId}" 
+                                style="background: #8b5cf6; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex: 1;"
+                                title="Push to remote"
+                            >
+                                ⬆️ PUSH
+                            </button>
+                            <button 
+                                id="sync-btn-${componentId}" 
+                                style="background: #10b981; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex: 1;"
+                                title="Pull then push"
+                            >
+                                🔄 SYNC
+                            </button>
+                        </div>
+                        <div style="margin-bottom: 16px; display: flex; gap: 8px;">
+                            <button 
+                                id="commit-push-btn-${componentId}" 
+                                style="background: #f97316; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex: 1;"
+                                title="Commit and push"
+                            >
+                                🔥 COMMIT & PUSH
+                            </button>
+                            <button 
+                                id="commit-all-push-btn-${componentId}" 
+                                style="background: #ec4899; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex: 1;"
+                                title="Stage all, commit and push"
+                            >
+                                ⚡ ALL & PUSH
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -750,6 +789,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const commitMessageTextarea = element.find(`#commit-message-${componentId}`)[0];
         const commitBtn = element.find(`#commit-btn-${componentId}`)[0];
         const commitAllBtn = element.find(`#commit-all-btn-${componentId}`)[0];
+        const pullBtn = element.find(`#pull-btn-${componentId}`)[0];
+        const pushBtn = element.find(`#push-btn-${componentId}`)[0];
+        const syncBtn = element.find(`#sync-btn-${componentId}`)[0];
+        const commitPushBtn = element.find(`#commit-push-btn-${componentId}`)[0];
+        const commitAllPushBtn = element.find(`#commit-all-push-btn-${componentId}`)[0];
 
         // Load git status
         loadGitStatus(componentId, gitStatus);
@@ -790,6 +834,50 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
                 await commitChanges(componentId, message, true);
+            });
+        }
+
+        // Add pull/push/sync button functionality
+        if (pullBtn) {
+            pullBtn.addEventListener('click', async () => {
+                await pullChanges(componentId);
+            });
+        }
+
+        if (pushBtn) {
+            pushBtn.addEventListener('click', async () => {
+                await pushChanges(componentId);
+            });
+        }
+
+        if (syncBtn) {
+            syncBtn.addEventListener('click', async () => {
+                const pullSuccess = await pullChanges(componentId);
+                if (pullSuccess) {
+                    await pushChanges(componentId);
+                }
+            });
+        }
+
+        if (commitPushBtn) {
+            commitPushBtn.addEventListener('click', async () => {
+                const message = commitMessageTextarea.value.trim();
+                if (!message) {
+                    alert('Please enter a commit message');
+                    return;
+                }
+                await commitChanges(componentId, message, false, true); // commit and push
+            });
+        }
+
+        if (commitAllPushBtn) {
+            commitAllPushBtn.addEventListener('click', async () => {
+                const message = commitMessageTextarea.value.trim();
+                if (!message) {
+                    alert('Please enter a commit message');
+                    return;
+                }
+                await commitChanges(componentId, message, true, true); // commit all and push
             });
         }
 
@@ -1270,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.appendChild(modal);
     }
 
-    async function commitChanges(componentId, message, commitAll = false) {
+    async function commitChanges(componentId, message, commitAll = false, andPush = false) {
         const projectPath = localStorage.getItem('octo-project-path');
         if (!projectPath || !window.electronAPI || !window.electronAPI.runGitCommand) {
             console.error('Cannot commit: project path or git command not available');
@@ -1306,14 +1394,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                     commitMessageTextarea.value = '';
                 }
                 
-                // Refresh git status
-                const container = document.querySelector(`#git-status-${componentId}`);
-                if (container) {
-                    loadGitStatus(componentId, container);
+                // Push if requested
+                if (andPush) {
+                    console.log('📤 Pushing changes...');
+                    const pushSuccess = await pushChanges(componentId);
+                    
+                    // Refresh git status
+                    const container = document.querySelector(`#git-status-${componentId}`);
+                    if (container) {
+                        loadGitStatus(componentId, container);
+                    }
+                    
+                    if (pushSuccess) {
+                        showSaveNotification('Committed and pushed successfully!');
+                    } else {
+                        showSaveNotification('Committed but push failed - check console');
+                    }
+                } else {
+                    // Refresh git status
+                    const container = document.querySelector(`#git-status-${componentId}`);
+                    if (container) {
+                        loadGitStatus(componentId, container);
+                    }
+                    
+                    // Show success notification
+                    showSaveNotification('Commit created successfully!');
                 }
-                
-                // Show success notification
-                showSaveNotification('Commit created successfully!');
             } else {
                 console.error('Commit failed:', commitResult.error);
                 alert('Commit failed: ' + (commitResult.error || 'Unknown error'));
@@ -1321,6 +1427,174 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error during commit:', error);
             alert('Error during commit: ' + error.message);
+        }
+    }
+
+    async function pullChanges(componentId) {
+        const projectPath = localStorage.getItem('octo-project-path');
+        if (!projectPath || !window.electronAPI || !window.electronAPI.runGitCommand) {
+            console.error('Cannot pull: project path or git command not available');
+            return false;
+        }
+
+        try {
+            console.log('⬇️ Starting pull from remote...');
+            
+            // Get the current branch
+            const branchResult = await window.electronAPI.runGitCommand('branch --show-current', projectPath);
+            const currentBranch = branchResult.success ? branchResult.output.trim() : 'main';
+            
+            // Pull from remote
+            console.log(`📥 Pulling from origin/${currentBranch}...`);
+            const pullResult = await window.electronAPI.runGitCommand(`pull origin ${currentBranch}`, projectPath);
+            
+            if (pullResult.success) {
+                console.log('✅ Pull successful!');
+                showSaveNotification('Pulled from remote successfully!');
+                
+                // Refresh git status
+                const container = document.querySelector(`#git-status-${componentId}`);
+                if (container) {
+                    loadGitStatus(componentId, container);
+                }
+                
+                return true;
+            } else {
+                console.error('Pull failed:', pullResult.error);
+                
+                // Check for merge conflicts
+                if (pullResult.error.includes('conflict') || pullResult.error.includes('CONFLICT')) {
+                    alert('Pull failed: Merge conflicts detected. Please resolve conflicts manually.');
+                } else if (pullResult.error.includes('no tracking information')) {
+                    // Try to set upstream and pull
+                    console.log('🔄 Setting upstream branch...');
+                    const setUpstreamResult = await window.electronAPI.runGitCommand(`branch --set-upstream-to=origin/${currentBranch} ${currentBranch}`, projectPath);
+                    
+                    if (setUpstreamResult.success) {
+                        // Try pull again
+                        const retryPullResult = await window.electronAPI.runGitCommand(`pull origin ${currentBranch}`, projectPath);
+                        if (retryPullResult.success) {
+                            console.log('✅ Pull successful after setting upstream!');
+                            showSaveNotification('Pulled from remote successfully!');
+                            
+                            // Refresh git status
+                            const container = document.querySelector(`#git-status-${componentId}`);
+                            if (container) {
+                                loadGitStatus(componentId, container);
+                            }
+                            
+                            return true;
+                        }
+                    }
+                    
+                    alert('Pull failed: ' + (pullResult.error || 'Unknown error'));
+                } else {
+                    alert('Pull failed: ' + (pullResult.error || 'Unknown error'));
+                }
+                return false;
+            }
+        } catch (error) {
+            console.error('Error during pull:', error);
+            alert('Error during pull: ' + error.message);
+            return false;
+        }
+    }
+
+    async function pushChanges(componentId) {
+        const projectPath = localStorage.getItem('octo-project-path');
+        if (!projectPath || !window.electronAPI || !window.electronAPI.runGitCommand) {
+            console.error('Cannot push: project path or git command not available');
+            return false;
+        }
+
+        try {
+            console.log('🚀 Starting push to remote...');
+            
+            // First check if we have a remote configured
+            const remoteResult = await window.electronAPI.runGitCommand('remote -v', projectPath);
+            if (!remoteResult.success || !remoteResult.output.trim()) {
+                console.error('No remote repository configured');
+                alert('No remote repository configured. Please add a remote first.');
+                return false;
+            }
+            
+            // Get the current branch
+            const branchResult = await window.electronAPI.runGitCommand('branch --show-current', projectPath);
+            const currentBranch = branchResult.success ? branchResult.output.trim() : 'main';
+            
+            // Push to remote
+            console.log(`📤 Pushing to origin/${currentBranch}...`);
+            const pushResult = await window.electronAPI.runGitCommand(`push origin ${currentBranch}`, projectPath);
+            
+            if (pushResult.success) {
+                console.log('✅ Push successful!');
+                showSaveNotification('Pushed to remote successfully!');
+                
+                // Refresh git status
+                const container = document.querySelector(`#git-status-${componentId}`);
+                if (container) {
+                    loadGitStatus(componentId, container);
+                }
+                
+                return true;
+            } else {
+                console.error('Push failed:', pushResult.error);
+                
+                // Check for common errors
+                if (pushResult.error.includes('no upstream branch')) {
+                    // Try to push with --set-upstream
+                    console.log('🔄 No upstream branch, trying with --set-upstream...');
+                    const upstreamResult = await window.electronAPI.runGitCommand(`push --set-upstream origin ${currentBranch}`, projectPath);
+                    
+                    if (upstreamResult.success) {
+                        console.log('✅ Push with upstream successful!');
+                        showSaveNotification('Pushed to remote successfully!');
+                        
+                        // Refresh git status
+                        const container = document.querySelector(`#git-status-${componentId}`);
+                        if (container) {
+                            loadGitStatus(componentId, container);
+                        }
+                        
+                        return true;
+                    } else {
+                        console.error('Push with upstream failed:', upstreamResult.error);
+                        alert('Push failed: ' + (upstreamResult.error || 'Unknown error'));
+                        return false;
+                    }
+                } else if (pushResult.error.includes('non-fast-forward') || pushResult.error.includes('rejected')) {
+                    // Suggest pulling first
+                    const doPull = confirm('Push was rejected because your branch is behind the remote.\n\nWould you like to pull the latest changes first?');
+                    if (doPull) {
+                        console.log('🔄 User chose to pull first...');
+                        const pullSuccess = await pullChanges(componentId);
+                        if (pullSuccess) {
+                            // Try pushing again after successful pull
+                            console.log('🔄 Retrying push after pull...');
+                            const retryPushResult = await window.electronAPI.runGitCommand(`push origin ${currentBranch}`, projectPath);
+                            if (retryPushResult.success) {
+                                console.log('✅ Push successful after pull!');
+                                showSaveNotification('Synced and pushed successfully!');
+                                return true;
+                            } else {
+                                alert('Push still failed after pull: ' + (retryPushResult.error || 'Unknown error'));
+                                return false;
+                            }
+                        }
+                        return false;
+                    } else {
+                        alert('Push failed: Your branch is behind the remote. Use PULL or SYNC to update first.');
+                        return false;
+                    }
+                } else {
+                    alert('Push failed: ' + (pushResult.error || 'Unknown error'));
+                    return false;
+                }
+            }
+        } catch (error) {
+            console.error('Error during push:', error);
+            alert('Error during push: ' + error.message);
+            return false;
         }
     }
 
