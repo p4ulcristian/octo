@@ -1291,9 +1291,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            // Commit the changes
+            // Commit the changes - need to properly escape the message
             console.log('💾 Creating commit...');
-            const commitResult = await window.electronAPI.runGitCommand(`commit -m ${message}`, projectPath);
+            // Escape double quotes in the message and wrap in quotes
+            const escapedMessage = message.replace(/"/g, '\\"');
+            const commitResult = await window.electronAPI.runGitCommand(`commit -m "${escapedMessage}"`, projectPath);
             
             if (commitResult.success) {
                 console.log('✅ Commit successful!');

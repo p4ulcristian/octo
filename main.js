@@ -346,7 +346,33 @@ ipcMain.handle('write-file', async (event, filePath, content) => {
 
 ipcMain.handle('run-git-command', async (event, command, workingDir) => {
   return new Promise((resolve) => {
-    const args = command.split(' ');
+    // Parse command respecting quotes
+    const args = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < command.length; i++) {
+      const char = command[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ' ' && !inQuotes) {
+        if (current) {
+          args.push(current);
+          current = '';
+        }
+      } else {
+        current += char;
+      }
+    }
+    
+    if (current) {
+      args.push(current);
+    }
+    
+    console.log('Git command:', command);
+    console.log('Parsed args:', args);
+    
     const gitProcess = spawn('git', args, {
       cwd: workingDir,
       stdio: ['ignore', 'pipe', 'pipe']
