@@ -18,6 +18,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Component cleanup functions
     const cleanupFunctions = {};
 
+    // Add refresh/reload confirmation dialog
+    window.addEventListener('beforeunload', (event) => {
+        // Check if there are any open tabs or unsaved work
+        const hasOpenTabs = goldenLayout && goldenLayout.root.contentItems.length > 0;
+        const hasOpenTerminals = Object.keys(contentInstances.terminals).length > 0;
+        const hasOpenEditors = Object.keys(contentInstances.editors).length > 0;
+        
+        if (hasOpenTabs || hasOpenTerminals || hasOpenEditors) {
+            const message = 'Are you sure you want to refresh? You may lose unsaved work and open terminals.';
+            event.preventDefault();
+            event.returnValue = message;
+            return message;
+        }
+    });
+
+    // Also catch keyboard shortcuts for refresh (Cmd+R/Ctrl+R)
+    document.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === 'r') {
+            const hasOpenTabs = goldenLayout && goldenLayout.root.contentItems.length > 0;
+            const hasOpenTerminals = Object.keys(contentInstances.terminals).length > 0;
+            const hasOpenEditors = Object.keys(contentInstances.editors).length > 0;
+            
+            if (hasOpenTabs || hasOpenTerminals || hasOpenEditors) {
+                const confirmed = confirm('Are you sure you want to refresh? You may lose unsaved work and open terminals.');
+                if (!confirmed) {
+                    event.preventDefault();
+                    return false;
+                }
+            }
+        }
+    });
+
     // Initialize Golden Layout
     function initializeGoldenLayout() {
         if (typeof GoldenLayout === 'undefined') {
