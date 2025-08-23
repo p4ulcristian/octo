@@ -760,10 +760,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Check if git status command is available via Electron API
             if (window.electronAPI && window.electronAPI.runGitCommand) {
-                const status = await window.electronAPI.runGitCommand('status --porcelain', projectPath);
-                const branch = await window.electronAPI.runGitCommand('branch --show-current', projectPath);
+                const statusResult = await window.electronAPI.runGitCommand('status --porcelain', projectPath);
+                const branchResult = await window.electronAPI.runGitCommand('branch --show-current', projectPath);
                 
-                displayGitStatus(container, status, branch.trim());
+                if (!statusResult.success) {
+                    container.innerHTML = `<div class="error" style="color: #f48771; text-align: center; padding: 20px;">Git status failed: ${statusResult.error || 'Unknown error'}</div>`;
+                    return;
+                }
+                
+                if (!branchResult.success) {
+                    container.innerHTML = `<div class="error" style="color: #f48771; text-align: center; padding: 20px;">Git branch failed: ${branchResult.error || 'Unknown error'}</div>`;
+                    return;
+                }
+                
+                displayGitStatus(container, statusResult.output || '', branchResult.output ? branchResult.output.trim() : 'main', componentId);
             } else {
                 container.innerHTML = '<div class="error" style="color: #f48771; text-align: center; padding: 20px;">Git commands not available</div>';
             }
@@ -774,7 +784,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function displayGitStatus(container, statusOutput, currentBranch) {
+    function displayGitStatus(container, statusOutput, currentBranch, componentId) {
         let html = `
             <div class="git-branch" style="margin-bottom: 16px; padding: 8px; background: #2d2d30; border-radius: 4px;">
                 <div style="color: #67ea94; font-weight: 600; font-size: 13px;">🌿 ${currentBranch || 'main'}</div>
