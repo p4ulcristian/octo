@@ -1045,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         try {
-            const result = await window.electronAPI.runGitCommand(`add "${filename}"`, projectPath);
+            const result = await window.electronAPI.runGitCommand(`add ${filename}`, projectPath);
             if (result.success) {
                 // Refresh git status
                 const container = document.querySelector(`#git-status-${componentId}`);
@@ -1068,7 +1068,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         try {
-            const result = await window.electronAPI.runGitCommand(`reset HEAD "${filename}"`, projectPath);
+            const result = await window.electronAPI.runGitCommand(`reset HEAD ${filename}`, projectPath);
             if (result.success) {
                 // Refresh git status
                 const container = document.querySelector(`#git-status-${componentId}`);
@@ -1092,8 +1092,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         try {
             // Get diff for the file
-            const result = await window.electronAPI.runGitCommand(`diff "${filename}"`, projectPath);
-            const stagedResult = await window.electronAPI.runGitCommand(`diff --staged "${filename}"`, projectPath);
+            const result = await window.electronAPI.runGitCommand(`diff ${filename}`, projectPath);
+            const stagedResult = await window.electronAPI.runGitCommand(`diff --staged ${filename}`, projectPath);
             
             let diffContent = '';
             if (result.success && result.output.trim()) {
