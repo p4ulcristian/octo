@@ -443,9 +443,10 @@ ipcMain.handle('run-git-command', async (event, command, workingDir) => {
 });
 
 // Terminal handlers using node-pty (real TTY)
-ipcMain.handle('terminal-start', async (event, terminalId) => {
+ipcMain.handle('terminal-start', async (event, terminalId, projectPath) => {
   try {
     console.log('Starting terminal for ID:', terminalId);
+    console.log('Project path received:', projectPath);
     
     // Clean up existing process for this terminal if it exists
     if (terminalProcesses.has(terminalId)) {
@@ -460,11 +461,14 @@ ipcMain.handle('terminal-start', async (event, terminalId) => {
     // Start PTY process with real shell
     const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/zsh');
     
+    const workingDir = projectPath || process.cwd();
+    console.log('Terminal starting in directory:', workingDir);
+    
     const terminalProcess = pty.spawn(shell, [], {
       name: 'xterm-color',
       cols: 80,
       rows: 24,
-      cwd: process.cwd(),
+      cwd: workingDir,
       env: fullEnv
     });
     
@@ -527,7 +531,7 @@ ipcMain.handle('terminal-stop', async (event, terminalId) => {
 });
 
 // Claude Terminal handlers using node-pty (automatically runs "claude")
-ipcMain.handle('claude-terminal-start', async (event) => {
+ipcMain.handle('claude-terminal-start', async (event, projectPath) => {
   try {
     if (claudePtyProcess) {
       claudePtyProcess.kill();
@@ -543,7 +547,7 @@ ipcMain.handle('claude-terminal-start', async (event) => {
       name: 'xterm-color',
       cols: 80,
       rows: 24,
-      cwd: process.cwd(),
+      cwd: projectPath || process.cwd(),
       env: fullEnv
     });
     

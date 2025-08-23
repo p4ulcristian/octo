@@ -590,7 +590,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Start the terminal process
                 console.log(`📡 Starting terminal process for: ${componentId}`);
                 if (window.electronAPI && window.electronAPI.terminalStart) {
-                    window.electronAPI.terminalStart(componentId).then(() => {
+                    const projectPath = localStorage.getItem('octo-project-path');
+                    window.electronAPI.terminalStart(componentId, projectPath).then(() => {
                         console.log(`✅ Terminal process started successfully for: ${componentId}`);
                         
                         // Now that the process is started, set up the output listener
@@ -638,7 +639,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     terminal.write('\r\n🔄 Terminal disconnected, restarting...\r\n');
                                     
                                     // Restart the terminal process
-                                    window.electronAPI.terminalStart(componentId).then(() => {
+                                    const projectPath = localStorage.getItem('octo-project-path');
+                                    console.log('🔍 Restarting terminal with project path:', projectPath);
+                                    window.electronAPI.terminalStart(componentId, projectPath).then(() => {
                                         console.log(`✅ Terminal ${componentId} restarted successfully`);
                                         terminal.write('✅ Terminal restarted successfully\r\n');
                                         
@@ -2734,15 +2737,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Start the terminal process
         if (window.electronAPI && window.electronAPI.terminalStart) {
-            window.electronAPI.terminalStart().then(() => {
+            const projectPath = localStorage.getItem('octo-project-path');
+            window.electronAPI.terminalStart(componentId, projectPath).then(() => {
                 console.log('Terminal process started for active tab:', componentId);
-                
-                // Change to project directory if set
-                const projectPath = localStorage.getItem('octo-project-path');
-                if (projectPath && projectPath.trim()) {
-                    console.log('Changing terminal directory to:', projectPath);
-                    window.electronAPI.terminalWrite(`cd "${projectPath}"\n`);
-                }
             }).catch((error) => {
                 console.error('Failed to start terminal process for active tab:', error);
             });

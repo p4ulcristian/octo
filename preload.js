@@ -34,7 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   runGitCommand: (command, workingDir) => ipcRenderer.invoke('run-git-command', command, workingDir),
   
   // Terminal functions
-  terminalStart: (terminalId) => ipcRenderer.invoke('terminal-start', terminalId),
+  terminalStart: (terminalId, projectPath) => ipcRenderer.invoke('terminal-start', terminalId, projectPath),
   terminalWrite: (terminalId, data) => ipcRenderer.invoke('terminal-write', terminalId, data),
   terminalStop: (terminalId) => ipcRenderer.invoke('terminal-stop', terminalId),
   terminalResize: (terminalId, cols, rows) => ipcRenderer.invoke('terminal-resize', terminalId, cols, rows),
@@ -46,7 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   
   // Claude terminal functions
-  claudeTerminalStart: () => ipcRenderer.invoke('claude-terminal-start'),
+  claudeTerminalStart: (projectPath) => ipcRenderer.invoke('claude-terminal-start', projectPath),
   claudeTerminalWrite: (data) => ipcRenderer.invoke('claude-terminal-write', data),
   claudeTerminalStop: () => ipcRenderer.invoke('claude-terminal-stop'),
   claudeTerminalResize: (cols, rows) => ipcRenderer.invoke('claude-terminal-resize', cols, rows),
