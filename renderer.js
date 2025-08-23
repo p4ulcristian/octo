@@ -1198,8 +1198,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function initializeHeaderButtons() {
         const playBtn = document.getElementById('play-btn');
         const settingsBtn = document.getElementById('settings-btn');
-        const devtoolsBtn = document.getElementById('devtools-btn');
-        const refreshBtn = document.getElementById('refresh-btn');
         
         // Track script running state
         let isScriptRunning = false;
@@ -1315,70 +1313,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
 
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                console.log('Refresh button clicked - refreshing browser');
-                if (window.electronAPI && window.electronAPI.browserRefresh) {
-                    window.electronAPI.browserRefresh();
-                }
-            });
-        }
-
-        if (devtoolsBtn) {
-            let devToolsOpen = false;
-            
-            // Function to switch to browser tab
-            function focusBrowserTab() {
-                if (goldenLayout && goldenLayout.root) {
-                    function findBrowserTab(item) {
-                        if (item.type === 'component' && item.config.componentName === 'preview') {
-                            return item;
-                        }
-                        if (item.contentItems && item.contentItems.length > 0) {
-                            for (let child of item.contentItems) {
-                                const browser = findBrowserTab(child);
-                                if (browser) return browser;
-                            }
-                        }
-                        return null;
-                    }
-                    
-                    const browserTab = findBrowserTab(goldenLayout.root);
-                    if (browserTab && browserTab.parent) {
-                        browserTab.parent.setActiveContentItem(browserTab);
-                        return true;
-                    }
-                }
-                return false;
-            }
-            
-            devtoolsBtn.addEventListener('click', () => {
-                console.log('DevTools button clicked - switching to browser and toggling DevTools');
-                
-                // First switch to browser tab
-                const browserFound = focusBrowserTab();
-                
-                // Wait a bit for tab switch, then toggle DevTools
-                setTimeout(() => {
-                    if (window.electronAPI && window.electronAPI.browserDevTools) {
-                        window.electronAPI.browserDevTools();
-                        
-                        // Toggle the button state
-                        devToolsOpen = !devToolsOpen;
-                        if (devToolsOpen) {
-                            devtoolsBtn.classList.add('active');
-                            devtoolsBtn.title = 'Close DevTools';
-                        } else {
-                            devtoolsBtn.classList.remove('active');
-                            devtoolsBtn.title = 'Open DevTools';
-                        }
-                    }
-                }, browserFound ? 100 : 0);
-            });
-            
-            // Initialize title
-            devtoolsBtn.title = 'Open DevTools';
-        }
 
     }
 
@@ -2237,38 +2171,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             return false;
         }
         
-        // Function to update active tab button
-        function updateActiveTabButton(activeComponent) {
-            // Remove active class from all tab buttons
-            document.querySelectorAll('.sidebar-tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Add active class to the current tab button
-            const buttonMap = {
-                'explorer': explorerBtn,
-                'preview': previewBtn,
-                'terminal': terminalBtn,
-                'git': gitBtn
-            };
-            
-            if (buttonMap[activeComponent]) {
-                buttonMap[activeComponent].classList.add('active');
-            }
-        }
         
         // Add click handlers
         if (explorerBtn) {
             explorerBtn.addEventListener('click', () => {
                 createNewExplorerTab();
-                updateActiveTabButton('explorer');
             });
         }
         
         if (previewBtn) {
             previewBtn.addEventListener('click', () => {
                 createNewBrowserTab();
-                updateActiveTabButton('preview');
             });
         }
         
@@ -2276,7 +2189,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             terminalBtn.addEventListener('click', () => {
                 // Always create new terminal
                 createNewTerminalTab();
-                updateActiveTabButton('terminal');
             });
         }
         
@@ -2288,20 +2200,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
-        // Listen to tab changes and update button states
-        if (goldenLayout) {
-            goldenLayout.on('stackCreated', function(stack) {
-                stack.on('activeContentItemChanged', function(contentItem) {
-                    const componentName = contentItem.config.componentName;
-                    updateActiveTabButton(componentName);
-                });
-            });
-        }
-        
-        // Set initial active tab (Claude by default since activeItemIndex is 1)
-        setTimeout(() => {
-            updateActiveTabButton('claude');
-        }, 500);
     }
 
     // Initialize everything
