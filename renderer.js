@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let goldenLayout = null;
     let contentInstances = {
         terminals: {},
-        claudeTerminals: {},
         editors: {},
         previews: {}
     };
@@ -115,16 +114,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 componentState.id = 'terminal-' + Date.now();
             }
             const id = componentState.id;
-            // Preserve the runClaudeCommand flag if it exists
             initializeTerminalComponent(container, componentState, id);
         });
 
-        goldenLayout.registerComponent('claude', function(container, componentState) {
-            if (!componentState.id) {
-                componentState.id = 'claude-' + Date.now();
-            }
-            initializeClaudeComponent(container, componentState, componentState.id);
-        });
 
         goldenLayout.registerComponent('explorer', function(container, componentState) {
             if (!componentState.id) {
@@ -245,8 +237,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }, 100);
                 }
 
-                // Claude initialization is now handled in initializeClaudeComponent
-                // No need for reinitializing when tab becomes active
             });
         });
 
@@ -583,13 +573,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 window.electronAPI.terminalWrite(componentId, `cd "${projectPath}"\n`);
                             }
                             
-                            // Run Claude command if this is a Claude terminal
-                            if (componentState.runClaudeCommand) {
-                                console.log('Running Claude command for terminal:', componentId);
-                                setTimeout(() => {
-                                    window.electronAPI.terminalWrite(componentId, 'claude --dangerously-skip-permissions\n');
-                                }, 500); // Small delay to ensure terminal is ready
-                            }
                         }, 100); // Wait for TTY connection to stabilize
                         
                     }).catch(error => {
@@ -672,96 +655,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    function initializeClaudeComponent(container, componentState, componentId) {
-        const element = container.getElement();
-        
-        element.html(`<div id="claude-${componentId}" style="height: 100%; width: 100%;"></div>`);
-
-        const claudeDiv = element.find(`#claude-${componentId}`)[0];
-        
-        const claudeTerminal = new Terminal({
-            cols: 80,
-            rows: 24,
-            fontSize: 14,
-            fontFamily: 'Consolas, "Courier New", monospace',
-            theme: {
-                background: '#1e1e1e',
-                foreground: '#66ccff'
-            }
-        });
-        
-        let isTerminalReady = false;
-        
-        setTimeout(() => {
-            if (claudeDiv && claudeDiv.offsetParent !== null) {
-                claudeTerminal.open(claudeDiv);
-                isTerminalReady = true;
-                
-                contentInstances.claudeTerminals[componentId] = claudeTerminal;
-                
-                // Start the Claude terminal process
-                if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
-                    window.electronAPI.claudeTerminalStart().then(() => {
-                        console.log('Claude terminal process started for', componentId);
-                        
-                        // Change to project directory if set
-                        const projectPath = localStorage.getItem('octo-project-path');
-                        if (projectPath && projectPath.trim()) {
-                            console.log('Changing Claude terminal directory to:', projectPath);
-                            window.electronAPI.claudeTerminalWrite(`cd "${projectPath}"\n`);
-                        }
-                    }).catch(error => {
-                        console.error('Failed to start Claude terminal:', error);
-                        if (isTerminalReady) {
-                            claudeTerminal.write('Failed to start Claude terminal process\r\n');
-                        }
-                    });
-                    
-                    // Listen for output
-                    window.electronAPI.onClaudeTerminalOutput((data) => {
-                        if (isTerminalReady && claudeTerminal) {
-                            claudeTerminal.write(data);
-                        }
-                    });
-                    
-                    // Send input
-                    claudeTerminal.onData(data => {
-                        if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
-                            window.electronAPI.claudeTerminalWrite(data);
-                        }
-                    });
-                    
-                    // Handle resize
-                    claudeTerminal.onResize(({ cols, rows }) => {
-                        if (window.electronAPI && window.electronAPI.claudeTerminalResize) {
-                            window.electronAPI.claudeTerminalResize(cols, rows);
-                        }
-                    });
-                }
-            }
-        }, 100);
-
-        // Resize terminal when container resizes
-        function handleResize() {
-            setTimeout(() => {
-                if (isTerminalReady && claudeTerminal && claudeTerminal.fit) {
-                    claudeTerminal.fit();
-                }
-            }, 50);
-        }
-        
-        container.on('resize', handleResize);
-
-        // Cleanup function
-        cleanupFunctions[componentId] = function() {
-            isTerminalReady = false;
-            if (contentInstances.claudeTerminals[componentId]) {
-                contentInstances.claudeTerminals[componentId].dispose();
-                delete contentInstances.claudeTerminals[componentId];
-            }
-            container.off('resize', handleResize);
-        };
-    }
 
     function initializeExplorerComponent(container, componentState, componentId) {
         const element = container.getElement();
@@ -2148,53 +2041,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function createClaudeTerminalTab() {
-        const terminalId = 'claude-terminal-' + Date.now();
-        
-        const newItemConfig = {
-            type: 'component',
-            componentName: 'terminal',
-            componentState: { 
-                id: terminalId,
-                runClaudeCommand: true  // Flag to run claude command after terminal starts
-            },
-            title: 'Claude Terminal'
-        };
-        
-        // Find any available stack to add the terminal tab to
-        if (goldenLayout && goldenLayout.root) {
-            function findStack(item) {
-                if (item.type === 'stack') {
-                    return item;
-                }
-                if (item.contentItems && item.contentItems.length > 0) {
-                    for (let child of item.contentItems) {
-                        const stack = findStack(child);
-                        if (stack) return stack;
-                    }
-                }
-                return null;
-            }
-            
-            const targetStack = findStack(goldenLayout.root);
-            
-            if (targetStack) {
-                targetStack.addChild(newItemConfig);
-                
-                // Switch to the new tab
-                setTimeout(() => {
-                    if (targetStack.contentItems.length > 0) {
-                        const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
-                        targetStack.setActiveContentItem(newTab);
-                    }
-                }, 100);
-                
-                console.log('New Claude terminal tab created');
-            } else {
-                console.error('No stack found to add Claude terminal tab to');
-            }
-        }
-    }
 
     function createNewGitTab() {
         const gitId = 'git-' + Date.now();
@@ -2291,53 +2137,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function initializeClaudeForActiveTab(componentId, claudeElement) {
-        const claudeTerminal = new Terminal({
-            cols: 80,
-            rows: 24,
-            fontSize: 14,
-            fontFamily: 'Consolas, "Courier New", monospace',
-            theme: {
-                background: '#1e1e1e',
-                foreground: '#ffffff'
-            }
-        });
-        
-        claudeTerminal.open(claudeElement);
-        contentInstances.claudeTerminals[componentId] = claudeTerminal;
-        
-        // Start Claude terminal process
-        if (window.electronAPI && window.electronAPI.claudeTerminalStart) {
-            window.electronAPI.claudeTerminalStart().then(() => {
-                console.log('Claude terminal process started for active tab:', componentId);
-                
-                // Change to project directory if set
-                const projectPath = localStorage.getItem('octo-project-path');
-                if (projectPath && projectPath.trim()) {
-                    console.log('Changing Claude terminal directory to:', projectPath);
-                    window.electronAPI.claudeTerminalWrite(`cd "${projectPath}"\n`);
-                }
-            }).catch((error) => {
-                console.error('Failed to start Claude terminal process for active tab:', error);
-            });
-        }
-        
-        // Handle data from Claude terminal
-        if (window.electronAPI && window.electronAPI.onClaudeTerminalOutput) {
-            window.electronAPI.onClaudeTerminalOutput((data) => {
-                if (claudeTerminal) {
-                    claudeTerminal.write(data);
-                }
-            });
-        }
-        
-        // Handle user input
-        claudeTerminal.onData(data => {
-            if (window.electronAPI && window.electronAPI.claudeTerminalWrite) {
-                window.electronAPI.claudeTerminalWrite(data);
-            }
-        });
-    }
 
     // Load system information
     if (window.electronAPI) {
@@ -2411,7 +2210,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const explorerBtn = document.getElementById('explorer-tab-btn');
         const previewBtn = document.getElementById('preview-tab-btn');
         const terminalBtn = document.getElementById('terminal-tab-btn');
-        const claudeBtn = document.getElementById('claude-tab-btn');
         const gitBtn = document.getElementById('git-tab-btn');
         
         // Function to find and switch to a specific tab
@@ -2451,7 +2249,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 'explorer': explorerBtn,
                 'preview': previewBtn,
                 'terminal': terminalBtn,
-                'claude': claudeBtn,
                 'git': gitBtn
             };
             
@@ -2483,13 +2280,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
-        if (claudeBtn) {
-            claudeBtn.addEventListener('click', () => {
-                // Create a terminal tab that runs claude
-                createClaudeTerminalTab();
-                updateActiveTabButton('claude');
-            });
-        }
         
         if (gitBtn) {
             gitBtn.addEventListener('click', () => {
