@@ -709,9 +709,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h4 style="margin: 0; font-size: 12px; color: #cccccc; text-transform: uppercase; letter-spacing: 0.5px;">Git Status</h4>
                     <button class="refresh-git-btn" title="Refresh" style="background: none; border: none; color: #cccccc; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 3px;">⟳</button>
                 </div>
-                <div class="git-content" style="flex: 1; padding: 12px; overflow-y: auto;">
-                    <div class="git-status" id="git-status-${componentId}">
-                        <div class="loading" style="color: #858585; text-align: center; padding: 20px;">Loading git status...</div>
+                <div class="git-content" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="git-status-section" style="flex: 1; padding: 12px; overflow-y: auto;">
+                        <div class="git-status" id="git-status-${componentId}">
+                            <div class="loading" style="color: #858585; text-align: center; padding: 20px;">Loading git status...</div>
+                        </div>
+                    </div>
+                    <div class="git-commit-section" style="padding: 12px; border-top: 1px solid #3e3e42; background: #2d2d30;">
+                        <div style="margin-bottom: 8px;">
+                            <label style="color: #cccccc; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">💬 COMMIT MESSAGE</label>
+                        </div>
+                        <textarea 
+                            id="commit-message-${componentId}" 
+                            placeholder="Enter commit message..."
+                            style="width: 100%; height: 60px; background: #1e1e1e; border: 1px solid #3e3e42; border-radius: 4px; color: #cccccc; font-family: monospace; font-size: 12px; padding: 8px; resize: vertical; outline: none;"
+                        ></textarea>
+                        <div style="margin-top: 8px; margin-bottom: 16px; display: flex; gap: 8px;">
+                            <button 
+                                id="commit-btn-${componentId}" 
+                                style="background: #067d1a; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex: 1;"
+                                title="Commit staged changes"
+                            >
+                                📦 COMMIT
+                            </button>
+                            <button 
+                                id="commit-all-btn-${componentId}" 
+                                style="background: #1f6feb; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex: 1;"
+                                title="Stage all and commit"
+                            >
+                                🚀 COMMIT ALL
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -719,6 +747,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const gitStatus = element.find(`#git-status-${componentId}`)[0];
         const refreshBtn = element.find('.refresh-git-btn')[0];
+        const commitMessageTextarea = element.find(`#commit-message-${componentId}`)[0];
+        const commitBtn = element.find(`#commit-btn-${componentId}`)[0];
+        const commitAllBtn = element.find(`#commit-all-btn-${componentId}`)[0];
 
         // Load git status
         loadGitStatus(componentId, gitStatus);
@@ -736,6 +767,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             refreshBtn.addEventListener('mouseleave', () => {
                 refreshBtn.style.background = 'none';
+            });
+        }
+
+        // Add commit button functionality
+        if (commitBtn) {
+            commitBtn.addEventListener('click', async () => {
+                const message = commitMessageTextarea.value.trim();
+                if (!message) {
+                    alert('Please enter a commit message');
+                    return;
+                }
+                await commitChanges(componentId, message, false);
+            });
+        }
+
+        if (commitAllBtn) {
+            commitAllBtn.addEventListener('click', async () => {
+                const message = commitMessageTextarea.value.trim();
+                if (!message) {
+                    alert('Please enter a commit message');
+                    return;
+                }
+                await commitChanges(componentId, message, true);
             });
         }
 
@@ -1214,6 +1268,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('keydown', handleKeydown);
         
         document.body.appendChild(modal);
+    }
+
+    async function commitChanges(componentId, message, commitAll = false) {
+        const projectPath = localStorage.getItem('octo-project-path');
+        if (!projectPath || !window.electronAPI || !window.electronAPI.runGitCommand) {
+            console.error('Cannot commit: project path or git command not available');
+            return;
+        }
+
+        try {
+            console.log(`🎯 Starting commit process: "${message}", commitAll: ${commitAll}`);
+            
+            // If commitAll is true, stage all changes first
+            if (commitAll) {
+                console.log('📦 Staging all changes...');
+                const addResult = await window.electronAPI.runGitCommand('add .', projectPath);
+                if (!addResult.success) {
+                    console.error('Failed to stage all changes:', addResult.error);
+                    alert('Failed to stage changes: ' + (addResult.error || 'Unknown error'));
+                    return;
+                }
+            }
+
+            // Commit the changes
+            console.log('💾 Creating commit...');
+            const commitResult = await window.electronAPI.runGitCommand(`commit -m ${message}`, projectPath);
+            
+            if (commitResult.success) {
+                console.log('✅ Commit successful!');
+                
+                // Clear the commit message
+                const commitMessageTextarea = document.querySelector(`#commit-message-${componentId}`);
+                if (commitMessageTextarea) {
+                    commitMessageTextarea.value = '';
+                }
+                
+                // Refresh git status
+                const container = document.querySelector(`#git-status-${componentId}`);
+                if (container) {
+                    loadGitStatus(componentId, container);
+                }
+                
+                // Show success notification
+                showSaveNotification('Commit created successfully!');
+            } else {
+                console.error('Commit failed:', commitResult.error);
+                alert('Commit failed: ' + (commitResult.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error during commit:', error);
+            alert('Error during commit: ' + error.message);
+        }
     }
 
     window.openFileInEditor = async function(filename) {
