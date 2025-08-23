@@ -1866,28 +1866,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             title: 'Explorer'
         };
         
-        // Find any available stack to add the explorer tab to
-        if (goldenLayout && goldenLayout.root) {
-            function findStack(item) {
-                if (item.type === 'stack') {
-                    return item;
-                }
-                if (item.contentItems && item.contentItems.length > 0) {
-                    for (let child of item.contentItems) {
-                        const stack = findStack(child);
-                        if (stack) return stack;
-                    }
-                }
-                return null;
-            }
-            
-            const stack = findStack(goldenLayout.root);
-            if (stack) {
-                stack.addChild(newItemConfig);
-                console.log('Explorer tab added to existing stack');
-            } else {
-                console.error('No stack found to add explorer tab to');
-            }
+        // Ensure there's a stack to add the explorer tab to
+        const stack = ensureStackExists();
+        if (stack) {
+            stack.addChild(newItemConfig);
+            console.log('Explorer tab added to stack');
+        } else {
+            console.error('Failed to create or find stack for explorer tab');
         }
     }
 
@@ -1903,28 +1888,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             title: 'Browser'
         };
         
-        // Find any available stack to add the browser tab to
-        if (goldenLayout && goldenLayout.root) {
-            function findStack(item) {
-                if (item.type === 'stack') {
-                    return item;
-                }
-                if (item.contentItems && item.contentItems.length > 0) {
-                    for (let child of item.contentItems) {
-                        const stack = findStack(child);
-                        if (stack) return stack;
-                    }
-                }
-                return null;
-            }
-            
-            const stack = findStack(goldenLayout.root);
-            if (stack) {
-                stack.addChild(newItemConfig);
-                console.log('Browser tab added to existing stack');
-            } else {
-                console.error('No stack found to add browser tab to');
-            }
+        // Ensure there's a stack to add the browser tab to
+        const stack = ensureStackExists();
+        if (stack) {
+            stack.addChild(newItemConfig);
+            console.log('Browser tab added to stack');
+        } else {
+            console.error('Failed to create or find stack for browser tab');
         }
     }
 
@@ -1940,38 +1910,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             title: 'Terminal'
         };
         
-        // Find any available stack to add the terminal tab to
-        if (goldenLayout && goldenLayout.root) {
-            function findStack(item) {
-                if (item.type === 'stack') {
-                    return item;
-                }
-                if (item.contentItems && item.contentItems.length > 0) {
-                    for (let child of item.contentItems) {
-                        const stack = findStack(child);
-                        if (stack) return stack;
-                    }
-                }
-                return null;
-            }
+        // Ensure there's a stack to add the terminal tab to
+        const targetStack = ensureStackExists();
+        if (targetStack) {
+            targetStack.addChild(newItemConfig);
             
-            const targetStack = findStack(goldenLayout.root);
+            // Switch to the new tab
+            setTimeout(() => {
+                if (targetStack.contentItems.length > 0) {
+                    const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
+                    targetStack.setActiveContentItem(newTab);
+                }
+            }, 100);
             
-            if (targetStack) {
-                targetStack.addChild(newItemConfig);
-                
-                // Switch to the new tab
-                setTimeout(() => {
-                    if (targetStack.contentItems.length > 0) {
-                        const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
-                        targetStack.setActiveContentItem(newTab);
-                    }
-                }, 100);
-                
-                console.log('New terminal tab created');
-            } else {
-                console.error('No stack found to add terminal tab to');
-            }
+            console.log('New terminal tab created');
+        } else {
+            console.error('Failed to create or find stack for terminal tab');
         }
     }
 
@@ -1988,38 +1942,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             title: 'Git Status'
         };
         
-        // Find any available stack to add the git tab to
-        if (goldenLayout && goldenLayout.root) {
-            function findStack(item) {
-                if (item.type === 'stack') {
-                    return item;
-                }
-                if (item.contentItems && item.contentItems.length > 0) {
-                    for (let child of item.contentItems) {
-                        const stack = findStack(child);
-                        if (stack) return stack;
-                    }
-                }
-                return null;
-            }
+        // Ensure there's a stack to add the git tab to
+        const targetStack = ensureStackExists();
+        if (targetStack) {
+            targetStack.addChild(newItemConfig);
             
-            const targetStack = findStack(goldenLayout.root);
+            // Switch to the new tab
+            setTimeout(() => {
+                if (targetStack.contentItems.length > 0) {
+                    const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
+                    targetStack.setActiveContentItem(newTab);
+                }
+            }, 100);
             
-            if (targetStack) {
-                targetStack.addChild(newItemConfig);
-                
-                // Switch to the new tab
-                setTimeout(() => {
-                    if (targetStack.contentItems.length > 0) {
-                        const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
-                        targetStack.setActiveContentItem(newTab);
-                    }
-                }, 100);
-                
-                console.log('New git tab created in stack:', targetStack);
-            } else {
-                console.error('No stack found to add git tab to');
-            }
+            console.log('New git tab created in stack:', targetStack);
+        } else {
+            console.error('Failed to create or find stack for git tab');
         }
     }
 
@@ -2036,22 +1974,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             title: `Editor ${editorCount}`
         };
         
-        // Find any available stack to add the editor tab to
+        // Find or create an available stack to add the editor tab to
         if (goldenLayout && goldenLayout.root) {
-            function findStack(item) {
-                if (item.type === 'stack') {
-                    return item;
-                }
-                if (item.contentItems && item.contentItems.length > 0) {
-                    for (let child of item.contentItems) {
-                        const stack = findStack(child);
-                        if (stack) return stack;
-                    }
-                }
-                return null;
-            }
-            
-            const targetStack = findStack(goldenLayout.root);
+            const targetStack = ensureStackExists();
             
             if (targetStack) {
                 targetStack.addChild(newItemConfig);
@@ -2066,7 +1991,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 console.log('New editor tab created in stack:', targetStack);
             } else {
-                console.error('No stack found to add editor tab to');
+                console.error('Failed to create or find stack for editor tab');
             }
         }
     }
@@ -2200,6 +2125,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
+    }
+
+    // Helper function to ensure there's always a stack available
+    function ensureStackExists() {
+        if (!goldenLayout || !goldenLayout.root) return null;
+        
+        function findStack(item) {
+            if (item.type === 'stack') {
+                return item;
+            }
+            if (item.contentItems && item.contentItems.length > 0) {
+                for (let child of item.contentItems) {
+                    const stack = findStack(child);
+                    if (stack) return stack;
+                }
+            }
+            return null;
+        }
+        
+        let stack = findStack(goldenLayout.root);
+        
+        // If no stack exists, create a new one
+        if (!stack) {
+            console.log('No stack found, creating a new one');
+            const newStackConfig = {
+                type: 'stack',
+                content: []
+            };
+            
+            // Add the stack directly to the root
+            goldenLayout.root.addChild(newStackConfig);
+            
+            // Find the newly created stack
+            stack = findStack(goldenLayout.root);
+        }
+        
+        return stack;
     }
 
     // Initialize everything
