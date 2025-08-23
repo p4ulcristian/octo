@@ -285,6 +285,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         goldenLayout.init();
         
         console.log('Golden Layout initialized');
+        
+        // Add window resize handler to refresh Golden Layout
+        window.addEventListener('resize', () => {
+            if (goldenLayout) {
+                // Use requestAnimationFrame to ensure DOM has updated
+                requestAnimationFrame(() => {
+                    goldenLayout.updateSize();
+                    console.log('Golden Layout resized to new window dimensions');
+                });
+            }
+        });
     }
 
     // Component initializers with proper cleanup
