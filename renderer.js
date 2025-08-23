@@ -710,7 +710,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="refresh-git-btn" title="Refresh" style="background: none; border: none; color: #cccccc; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 3px;">⟳</button>
                 </div>
                 <div class="git-content" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="git-history-section" style="padding: 12px; border-bottom: 1px solid #3e3e42; max-height: 200px; overflow-y: auto; display: none;" id="git-history-section-${componentId}">
+                        <div class="git-history" id="git-history-${componentId}">
+                            <div class="loading" style="color: #858585; text-align: center; padding: 10px;">Loading history...</div>
+                        </div>
+                    </div>
                     <div class="git-status-section" style="flex: 1; padding: 12px; overflow-y: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <button id="toggle-history-${componentId}" style="background: none; border: 1px solid #3e3e42; color: #858585; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600;">
+                                📊 SHOW HISTORY
+                            </button>
+                            <div id="branch-info-${componentId}" style="color: #67ea94; font-size: 11px; font-weight: 600;">
+                                <!-- Branch info will be inserted here -->
+                            </div>
+                        </div>
                         <div class="git-status" id="git-status-${componentId}">
                             <div class="loading" style="color: #858585; text-align: center; padding: 20px;">Loading git status...</div>
                         </div>
@@ -785,6 +798,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         `);
 
         const gitStatus = element.find(`#git-status-${componentId}`)[0];
+        const gitHistory = element.find(`#git-history-${componentId}`)[0];
+        const gitHistorySection = element.find(`#git-history-section-${componentId}`)[0];
+        const toggleHistoryBtn = element.find(`#toggle-history-${componentId}`)[0];
+        const branchInfo = element.find(`#branch-info-${componentId}`)[0];
         const refreshBtn = element.find('.refresh-git-btn')[0];
         const commitMessageTextarea = element.find(`#commit-message-${componentId}`)[0];
         const commitBtn = element.find(`#commit-btn-${componentId}`)[0];
@@ -797,6 +814,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Load git status
         loadGitStatus(componentId, gitStatus);
+        
+        // Add toggle history functionality
+        if (toggleHistoryBtn) {
+            toggleHistoryBtn.addEventListener('click', () => {
+                const isHidden = gitHistorySection.style.display === 'none';
+                if (isHidden) {
+                    gitHistorySection.style.display = 'block';
+                    toggleHistoryBtn.textContent = '📊 HIDE HISTORY';
+                    loadGitHistory(componentId, gitHistory);
+                } else {
+                    gitHistorySection.style.display = 'none';
+                    toggleHistoryBtn.textContent = '📊 SHOW HISTORY';
+                }
+            });
+        }
         
         // Add refresh button functionality
         if (refreshBtn) {
@@ -1595,6 +1627,80 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Error during push:', error);
             alert('Error during push: ' + error.message);
             return false;
+        }
+    }
+
+    async function loadGitHistory(componentId, container) {
+        const projectPath = localStorage.getItem('octo-project-path');
+        if (!projectPath || !window.electronAPI || !window.electronAPI.runGitCommand) {
+            console.error('Cannot load git history: project path or git command not available');
+            container.innerHTML = '<div style="color: #f87171; text-align: center; padding: 20px;">Git history not available</div>';
+            return;
+        }
+
+        try {
+            console.log('📚 Loading git history...');
+            container.innerHTML = '<div style="color: #858585; text-align: center; padding: 10px;">Loading history...</div>';
+
+            // Get current branch info
+            const branchResult = await window.electronAPI.runGitCommand('branch --show-current', projectPath);
+            const currentBranch = branchResult.success ? branchResult.output.trim() : 'unknown';
+
+            // Update branch info
+            const branchInfoElement = document.querySelector(`#branch-info-${componentId}`);
+            if (branchInfoElement) {
+                branchInfoElement.innerHTML = `🌿 ${currentBranch}`;
+            }
+
+            // Get commit history with more detailed format
+            const historyResult = await window.electronAPI.runGitCommand('log --oneline --decorate --graph -n 20 --pretty=format:"%h|%an|%cr|%s"', projectPath);
+            
+            if (!historyResult.success) {
+                console.error('Failed to load git history:', historyResult.error);
+                container.innerHTML = '<div style="color: #f87171; text-align: center; padding: 20px;">Failed to load git history</div>';
+                return;
+            }
+
+            const commits = historyResult.output.trim().split('\n').filter(line => line.length > 0);
+            
+            if (commits.length === 0) {
+                container.innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">No commit history</div>';
+                return;
+            }
+
+            let html = '';
+            commits.forEach((commit, index) => {
+                const parts = commit.split('|');
+                if (parts.length >= 4) {
+                    const hash = parts[0].trim();
+                    const author = parts[1].trim();
+                    const time = parts[2].trim();
+                    const message = parts.slice(3).join('|').trim();
+
+                    html += `
+                        <div style="display: flex; padding: 8px; margin-bottom: 6px; background: ${index % 2 === 0 ? '#252526' : '#2d2d30'}; border-radius: 4px; border-left: 3px solid #007acc;">
+                            <div style="flex: none; width: 60px; margin-right: 12px;">
+                                <div style="color: #67ea94; font-family: monospace; font-size: 11px; font-weight: 600;">${hash}</div>
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="color: #cccccc; font-size: 12px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    ${message}
+                                </div>
+                                <div style="color: #858585; font-size: 10px;">
+                                    👤 ${author} • 📅 ${time}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            container.innerHTML = html;
+            console.log('✅ Git history loaded successfully');
+
+        } catch (error) {
+            console.error('Error loading git history:', error);
+            container.innerHTML = '<div style="color: #f87171; text-align: center; padding: 20px;">Error loading git history</div>';
         }
     }
 
