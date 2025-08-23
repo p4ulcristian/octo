@@ -270,14 +270,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         const element = container.getElement();
         
         element.html(`
-            <div id="preview-${componentId}" style="height: 100%; width: 100%;">
-                <div class="browser-mount" id="browser-mount-${componentId}" style="width: 100%; height: 100%; position: relative; background: #f9f9f9; border: 2px dashed #ccc; overflow: hidden; box-sizing: border-box;">
+            <div id="preview-${componentId}" style="height: 100%; width: 100%; display: flex; flex-direction: column;">
+                <div class="browser-header" style="height: 40px; background: #2d2d30; border-bottom: 1px solid #3e3e42; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; gap: 8px;">
+                    <input type="text" id="url-input-${componentId}" placeholder="Enter URL..." style="flex: 1; height: 28px; background: #1e1e1e; color: #cccccc; border: 1px solid #3e3e42; border-radius: 4px; padding: 0 8px; font-size: 13px;">
+                    <button id="reload-btn-${componentId}" title="Reload" style="height: 28px; width: 28px; background: #3c3c3c; border: 1px solid #3e3e42; color: #cccccc; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; border-radius: 4px;"><i class="fas fa-refresh"></i></button>
+                    <button id="devtools-btn-${componentId}" title="DevTools" style="height: 28px; width: 28px; background: #3c3c3c; border: 1px solid #3e3e42; color: #cccccc; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; border-radius: 4px;"><i class="fas fa-wrench"></i></button>
+                </div>
+                <div class="browser-mount" id="browser-mount-${componentId}" style="width: 100%; flex: 1; position: relative; background: #f9f9f9; border: 2px dashed #ccc; overflow: hidden; box-sizing: border-box;">
                     <div class="browser-placeholder"><p>Loading browser...</p></div>
                 </div>
             </div>
         `);
 
         const browserMount = element.find(`#browser-mount-${componentId}`)[0];
+        const urlInput = element.find(`#url-input-${componentId}`)[0];
+        const reloadBtn = element.find(`#reload-btn-${componentId}`)[0];
+        const devtoolsBtn = element.find(`#devtools-btn-${componentId}`)[0];
+        
+        // URL input event handler
+        if (urlInput) {
+            urlInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const url = urlInput.value.trim();
+                    if (url && window.electronAPI && window.electronAPI.navigateBrowser) {
+                        window.electronAPI.navigateBrowser(url);
+                        // Save URL to localStorage
+                        localStorage.setItem('octo-preview-url', url);
+                    }
+                }
+            });
+            
+            // Load saved URL if available
+            const savedUrl = localStorage.getItem('octo-preview-url');
+            if (savedUrl) {
+                urlInput.value = savedUrl;
+            }
+        }
+        
+        // Reload button event handler
+        if (reloadBtn) {
+            reloadBtn.addEventListener('click', () => {
+                if (window.electronAPI && window.electronAPI.browserRefresh) {
+                    window.electronAPI.browserRefresh();
+                }
+            });
+        }
+        
+        // DevTools button event handler
+        if (devtoolsBtn) {
+            devtoolsBtn.addEventListener('click', () => {
+                if (window.electronAPI && window.electronAPI.browserDevTools) {
+                    window.electronAPI.browserDevTools();
+                }
+            });
+        }
+        
+        // Listen for browser navigation to update URL input
+        if (urlInput && window.electronAPI && window.electronAPI.onBrowserNavigated) {
+            window.electronAPI.onBrowserNavigated((url) => {
+                urlInput.value = url;
+                localStorage.setItem('octo-preview-url', url);
+            });
+        }
         
         // Browser mount bounds update function
         function updateBrowserMountBounds() {
@@ -287,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (window.electronAPI && window.electronAPI.sendBrowserMountBounds && rect.width > 0 && rect.height > 0) {
                 const adjustedBounds = {
                     x: Math.floor(rect.left + 2),
-                    y: Math.floor(rect.top + 2),
+                    y: Math.floor(rect.top + 2), 
                     width: Math.floor(rect.width - 4),
                     height: Math.floor(rect.height - 4)
                 };
@@ -2010,6 +2064,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function createNewBrowserTab() {
+        const browserId = 'preview-' + Date.now();
+        
+        const newItemConfig = {
+            type: 'component',
+            componentName: 'preview',
+            componentState: { 
+                id: browserId
+            },
+            title: 'Browser'
+        };
+        
+        // Find any available stack to add the browser tab to
+        if (goldenLayout && goldenLayout.root) {
+            function findStack(item) {
+                if (item.type === 'stack') {
+                    return item;
+                }
+                if (item.contentItems && item.contentItems.length > 0) {
+                    for (let child of item.contentItems) {
+                        const stack = findStack(child);
+                        if (stack) return stack;
+                    }
+                }
+                return null;
+            }
+            
+            const stack = findStack(goldenLayout.root);
+            if (stack) {
+                stack.addChild(newItemConfig);
+                console.log('Browser tab added to existing stack');
+            } else {
+                console.error('No stack found to add browser tab to');
+            }
+        }
+    }
+
     function createNewTerminalTab() {
         const terminalId = 'terminal-' + Date.now();
         
@@ -2379,9 +2470,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (previewBtn) {
             previewBtn.addEventListener('click', () => {
-                if (switchToTab('preview')) {
-                    updateActiveTabButton('preview');
-                }
+                createNewBrowserTab();
+                updateActiveTabButton('preview');
             });
         }
         
