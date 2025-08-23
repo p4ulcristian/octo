@@ -4,6 +4,45 @@ const path = require('path');
 const pty = require('node-pty');
 const { spawn } = require('child_process');
 
+// Get full user environment by reading from the user's shell
+async function getFullUserEnv() {
+  return new Promise((resolve) => {
+    const shell = process.env.SHELL || '/bin/zsh';
+    const envProcess = spawn(shell, ['-c', 'env'], { 
+      stdio: ['ignore', 'pipe', 'ignore'] 
+    });
+    
+    let envOutput = '';
+    envProcess.stdout.on('data', (data) => {
+      envOutput += data.toString();
+    });
+    
+    envProcess.on('close', () => {
+      const env = { ...process.env }; // Start with current env
+      
+      // Parse the shell environment
+      envOutput.split('\n').forEach(line => {
+        const equalIndex = line.indexOf('=');
+        if (equalIndex > 0) {
+          const key = line.substring(0, equalIndex);
+          const value = line.substring(equalIndex + 1);
+          env[key] = value;
+        }
+      });
+      
+      // Ensure essential paths are included
+      if (!env.PATH.includes('/opt/homebrew/bin')) {
+        env.PATH = `/opt/homebrew/bin:/opt/homebrew/sbin:${env.PATH}`;
+      }
+      if (!env.PATH.includes('/usr/local/bin')) {
+        env.PATH = `/usr/local/bin:${env.PATH}`;
+      }
+      
+      resolve(env);
+    });
+  });
+}
+
 if (process.env.NODE_ENV === 'development') {
   require('electron-reload')(__dirname, {
     electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
@@ -415,6 +454,9 @@ ipcMain.handle('terminal-start', async (event, terminalId) => {
       terminalProcesses.delete(terminalId);
     }
     
+    // Get the full user environment
+    const fullEnv = await getFullUserEnv();
+    
     // Start PTY process with real shell
     const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/zsh');
     
@@ -423,7 +465,7 @@ ipcMain.handle('terminal-start', async (event, terminalId) => {
       cols: 80,
       rows: 24,
       cwd: process.cwd(),
-      env: process.env
+      env: fullEnv
     });
     
     // Store the process
@@ -491,6 +533,9 @@ ipcMain.handle('claude-terminal-start', async (event) => {
       claudePtyProcess.kill();
     }
     
+    // Get the full user environment
+    const fullEnv = await getFullUserEnv();
+    
     // Start PTY process with real shell
     const shell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/zsh');
     
@@ -499,7 +544,7 @@ ipcMain.handle('claude-terminal-start', async (event) => {
       cols: 80,
       rows: 24,
       cwd: process.cwd(),
-      env: process.env
+      env: fullEnv
     });
     
     // Send output to renderer
