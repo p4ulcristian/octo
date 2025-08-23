@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendBrowserMountBounds: (bounds) => ipcRenderer.send('browser-mount-bounds', bounds),
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('write-file', filePath, content),
+  runGitCommand: (command, workingDir) => ipcRenderer.invoke('run-git-command', command, workingDir),
   
   // Terminal functions
   terminalStart: (terminalId) => ipcRenderer.invoke('terminal-start', terminalId),

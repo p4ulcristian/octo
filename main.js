@@ -2,6 +2,7 @@ const { app, BrowserWindow, BrowserView, Menu, ipcMain, dialog } = require('elec
 const fs = require('fs').promises;
 const path = require('path');
 const pty = require('node-pty');
+const { spawn } = require('child_process');
 
 if (process.env.NODE_ENV === 'development') {
   require('electron-reload')(__dirname, {
@@ -341,6 +342,39 @@ ipcMain.handle('write-file', async (event, filePath, content) => {
   } catch (error) {
     return { success: false, error: error.message };
   }
+});
+
+ipcMain.handle('run-git-command', async (event, command, workingDir) => {
+  return new Promise((resolve) => {
+    const args = command.split(' ');
+    const gitProcess = spawn('git', args, {
+      cwd: workingDir,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    
+    let output = '';
+    let error = '';
+    
+    gitProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    gitProcess.stderr.on('data', (data) => {
+      error += data.toString();
+    });
+    
+    gitProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve({ success: true, output: output.trim() });
+      } else {
+        resolve({ success: false, error: error.trim() || output.trim() });
+      }
+    });
+    
+    gitProcess.on('error', (err) => {
+      resolve({ success: false, error: err.message });
+    });
+  });
 });
 
 // Terminal handlers using node-pty (real TTY)

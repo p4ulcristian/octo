@@ -807,7 +807,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 html += '<div class="git-section" style="margin-bottom: 12px;">';
                 html += '<div style="color: #67ea94; font-weight: 600; font-size: 12px; margin-bottom: 6px;">📦 STAGED CHANGES</div>';
                 staged.forEach(file => {
-                    html += `<div style="color: #67ea94; font-size: 11px; padding: 2px 0; font-family: monospace;">+ ${file}</div>`;
+                    html += `<div class="git-file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
+                        <div style="color: #67ea94; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" onclick="showFileDiff('${componentId}', '${file}')">+ ${file}</div>
+                        <button onclick="unstageFile('${componentId}', '${file}')" style="background: none; border: 1px solid #f48771; color: #f48771; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 8px;" title="Unstage">−</button>
+                    </div>`;
                 });
                 html += '</div>';
             }
@@ -816,7 +819,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 html += '<div class="git-section" style="margin-bottom: 12px;">';
                 html += '<div style="color: #f48771; font-weight: 600; font-size: 12px; margin-bottom: 6px;">📝 CHANGES</div>';
                 modified.forEach(file => {
-                    html += `<div style="color: #f48771; font-size: 11px; padding: 2px 0; font-family: monospace;">M ${file}</div>`;
+                    html += `<div class="git-file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
+                        <div style="color: #f48771; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" onclick="showFileDiff('${componentId}', '${file}')">M ${file}</div>
+                        <button onclick="stageFile('${componentId}', '${file}')" style="background: none; border: 1px solid #67ea94; color: #67ea94; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 8px;" title="Stage">+</button>
+                    </div>`;
                 });
                 html += '</div>';
             }
@@ -825,13 +831,196 @@ document.addEventListener('DOMContentLoaded', async () => {
                 html += '<div class="git-section" style="margin-bottom: 12px;">';
                 html += '<div style="color: #858585; font-weight: 600; font-size: 12px; margin-bottom: 6px;">❓ UNTRACKED FILES</div>';
                 untracked.forEach(file => {
-                    html += `<div style="color: #858585; font-size: 11px; padding: 2px 0; font-family: monospace;">? ${file}</div>`;
+                    html += `<div class="git-file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
+                        <div style="color: #858585; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" onclick="showFileDiff('${componentId}', '${file}')">? ${file}</div>
+                        <button onclick="stageFile('${componentId}', '${file}')" style="background: none; border: 1px solid #67ea94; color: #67ea94; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 8px;" title="Stage">+</button>
+                    </div>`;
                 });
                 html += '</div>';
             }
         }
 
         container.innerHTML = html;
+    }
+
+    // Git helper functions
+    window.stageFile = async function(componentId, filename) {
+        const projectPath = localStorage.getItem('octo-project-path');
+        if (!projectPath || !window.electronAPI || !window.electronAPI.runGitCommand) {
+            console.error('Cannot stage file: project path or git command not available');
+            return;
+        }
+        
+        try {
+            const result = await window.electronAPI.runGitCommand(`add "${filename}"`, projectPath);
+            if (result.success) {
+                // Refresh git status
+                const container = document.querySelector(`#git-status-${componentId}`);
+                if (container) {
+                    loadGitStatus(componentId, container);
+                }
+            } else {
+                console.error('Failed to stage file:', result.error);
+            }
+        } catch (error) {
+            console.error('Error staging file:', error);
+        }
+    };
+
+    window.unstageFile = async function(componentId, filename) {
+        const projectPath = localStorage.getItem('octo-project-path');
+        if (!projectPath || !window.electronAPI || !window.electronAPI.runGitCommand) {
+            console.error('Cannot unstage file: project path or git command not available');
+            return;
+        }
+        
+        try {
+            const result = await window.electronAPI.runGitCommand(`reset HEAD "${filename}"`, projectPath);
+            if (result.success) {
+                // Refresh git status
+                const container = document.querySelector(`#git-status-${componentId}`);
+                if (container) {
+                    loadGitStatus(componentId, container);
+                }
+            } else {
+                console.error('Failed to unstage file:', result.error);
+            }
+        } catch (error) {
+            console.error('Error unstaging file:', error);
+        }
+    };
+
+    window.showFileDiff = async function(componentId, filename) {
+        const projectPath = localStorage.getItem('octo-project-path');
+        if (!projectPath || !window.electronAPI || !window.electronAPI.runGitCommand) {
+            console.error('Cannot show diff: project path or git command not available');
+            return;
+        }
+        
+        try {
+            // Get diff for the file
+            const result = await window.electronAPI.runGitCommand(`diff "${filename}"`, projectPath);
+            const stagedResult = await window.electronAPI.runGitCommand(`diff --staged "${filename}"`, projectPath);
+            
+            let diffContent = '';
+            if (result.success && result.output.trim()) {
+                diffContent += '--- WORKING DIRECTORY CHANGES ---\n' + result.output + '\n\n';
+            }
+            if (stagedResult.success && stagedResult.output.trim()) {
+                diffContent += '--- STAGED CHANGES ---\n' + stagedResult.output;
+            }
+            
+            if (!diffContent.trim()) {
+                diffContent = 'No changes to display for this file.';
+            }
+            
+            // Create or update diff modal
+            showDiffModal(filename, diffContent);
+        } catch (error) {
+            console.error('Error showing file diff:', error);
+        }
+    };
+
+    function showDiffModal(filename, diffContent) {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('diff-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'diff-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 8px;
+            width: 80%;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        `;
+        
+        const modalHeader = document.createElement('div');
+        modalHeader.style.cssText = `
+            background: #2d2d30;
+            padding: 12px 16px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        const title = document.createElement('h3');
+        title.style.cssText = 'margin: 0; color: #cccccc; font-size: 14px;';
+        title.textContent = `Changes in ${filename}`;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: #cccccc;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        `;
+        closeBtn.textContent = '×';
+        closeBtn.addEventListener('click', () => modal.remove());
+        
+        const diffContainer = document.createElement('pre');
+        diffContainer.style.cssText = `
+            flex: 1;
+            padding: 16px;
+            margin: 0;
+            overflow: auto;
+            background: #1e1e1e;
+            color: #cccccc;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        `;
+        diffContainer.textContent = diffContent;
+        
+        modalHeader.appendChild(title);
+        modalHeader.appendChild(closeBtn);
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(diffContainer);
+        modal.appendChild(modalContent);
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        // Close modal with Escape key
+        const handleKeydown = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleKeydown);
+            }
+        };
+        document.addEventListener('keydown', handleKeydown);
+        
+        document.body.appendChild(modal);
     }
 
     function initializeEditorComponent(container, componentState, componentId) {
@@ -1378,11 +1567,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const saveBtn = popup.querySelector('#save-settings-btn');
         
         browseBtn.addEventListener('click', async () => {
-            if (window.electronAPI && window.electronAPI.selectDirectory) {
-                const path = await window.electronAPI.selectDirectory();
+            if (window.electronAPI && window.electronAPI.selectFolder) {
+                const path = await window.electronAPI.selectFolder();
                 if (path) {
                     projectInput.value = path;
                 }
+            } else {
+                console.error('selectFolder method not available in electronAPI');
             }
         });
         
