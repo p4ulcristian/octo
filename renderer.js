@@ -746,22 +746,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function loadGitStatus(componentId, container) {
-        if (!container) return;
+        console.log('🔄 loadGitStatus called with componentId:', componentId, 'container:', !!container);
+        
+        if (!container) {
+            console.error('❌ No container provided to loadGitStatus');
+            return;
+        }
         
         try {
             container.innerHTML = '<div class="loading" style="color: #858585; text-align: center; padding: 20px;">Loading git status...</div>';
             
             // Get project path
             const projectPath = localStorage.getItem('octo-project-path');
+            console.log('📁 Project path from localStorage:', projectPath);
+            
             if (!projectPath || !projectPath.trim()) {
+                console.log('⚠️ No project path set');
                 container.innerHTML = '<div class="error" style="color: #f48771; text-align: center; padding: 20px;">No project path set. Use Settings to configure.</div>';
                 return;
             }
 
             // Check if git status command is available via Electron API
             if (window.electronAPI && window.electronAPI.runGitCommand) {
+                console.log('🔧 Running git status command...');
                 const statusResult = await window.electronAPI.runGitCommand('status --porcelain', projectPath);
+                console.log('📤 Git status raw result:', statusResult);
+                console.log('📤 Git status output:', JSON.stringify(statusResult.output));
+                
                 const branchResult = await window.electronAPI.runGitCommand('branch --show-current', projectPath);
+                console.log('🌿 Git branch result:', branchResult);
                 
                 if (!statusResult.success) {
                     container.innerHTML = `<div class="error" style="color: #f48771; text-align: center; padding: 20px;">Git status failed: ${statusResult.error || 'Unknown error'}</div>`;
@@ -785,41 +798,95 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function displayGitStatus(container, statusOutput, currentBranch, componentId) {
-        let html = `
+        console.log('🎨 displayGitStatus called with:', {
+            container: !!container,
+            statusOutput: statusOutput,
+            currentBranch: currentBranch,
+            componentId: componentId
+        });
+        
+        try {
+            console.log('📝 Starting HTML generation...');
+            let html = `
             <div class="git-branch" style="margin-bottom: 16px; padding: 8px; background: #2d2d30; border-radius: 4px;">
                 <div style="color: #67ea94; font-weight: 600; font-size: 13px;">🌿 ${currentBranch || 'main'}</div>
             </div>
         `;
+        console.log('✅ Branch HTML created');
+
+        // Initialize file arrays outside the conditional blocks
+        const modified = [];
+        const untracked = [];
+        const staged = [];
 
         if (!statusOutput || statusOutput.trim() === '') {
+            console.log('📄 Working tree is clean');
             html += '<div style="color: #67ea94; text-align: center; padding: 20px;">✅ Working tree clean</div>';
         } else {
-            const lines = statusOutput.trim().split('\n');
-            const modified = [];
-            const untracked = [];
-            const staged = [];
+            console.log('📄 Processing git status output:', statusOutput);
+            const lines = statusOutput.split('\n').filter(line => line.length > 0);
+            console.log('📄 Status lines:', lines);
+            
+            console.log('🔍 Starting to parse status lines...');
 
-            lines.forEach(line => {
-                if (line.length < 3) return;
+            lines.forEach((line, index) => {
+                console.log(`🔍 Processing line ${index}: "${line}"`);
+                console.log(`🔤 Line characters:`, line.split('').map((c, i) => `${i}:"${c}"`).join(' '));
+                
+                if (line.length < 3) {
+                    console.log(`⏭️ Skipping short line: "${line}"`);
+                    return;
+                }
                 const status = line.substring(0, 2);
-                const filename = line.substring(3);
+                const rawFilename = line.substring(3);
+                const filename = rawFilename; // Don't trim yet - let's see what we get
+                
+                console.log(`🔤 Raw substring(3): "${rawFilename}"`);
+                console.log(`🔤 Raw substring(3) chars:`, rawFilename.split('').map((c, i) => `${i}:"${c}"`).join(' '));
+                console.log(`📁 Raw filename: "${filename}"`);
+                console.log(`📁 Filename length: ${filename.length}`);
+                console.log(`📁 Filename chars:`, filename.split('').map((c, i) => `${i}:"${c}"`).join(' '));
+                console.log(`🏷️ Status: "${status}"`);
 
-                if (status[0] !== ' ') {
+                const indexStatus = status[0];  // Staged/index status
+                const workTreeStatus = status[1]; // Working tree status
+                
+                console.log(`🔍 Index status: "${indexStatus}", WorkTree status: "${workTreeStatus}"`);
+                
+                // Check if file has staged changes (index status is not space)
+                if (indexStatus !== ' ') {
+                    console.log(`📦 Adding to staged: "${filename}" (index: ${indexStatus})`);
                     staged.push(filename);
-                } else if (status[1] === 'M') {
+                }
+                
+                // Check if file has working tree changes
+                if (workTreeStatus === 'M') {
+                    console.log(`📝 Adding to modified: "${filename}" (worktree: ${workTreeStatus})`);
                     modified.push(filename);
                 } else if (status === '??') {
+                    console.log(`❓ Adding to untracked: "${filename}"`);
                     untracked.push(filename);
+                } else if (workTreeStatus !== ' ' && status !== '??') {
+                    console.log(`📄 Other working tree status "${workTreeStatus}" for "${filename}"`);
                 }
             });
+            
+            console.log('📊 Final arrays:', { staged, modified, untracked });
 
             if (staged.length > 0) {
+                console.log('📦 Generating staged files HTML...');
                 html += '<div class="git-section" style="margin-bottom: 12px;">';
                 html += '<div style="color: #67ea94; font-weight: 600; font-size: 12px; margin-bottom: 6px;">📦 STAGED CHANGES</div>';
-                staged.forEach(file => {
+                staged.forEach((file, index) => {
+                    console.log(`📦 Processing staged file ${index}: ${file}`);
+                    const fileId = `staged-file-${componentId}-${index}`;
+                    const diffId = `staged-diff-${componentId}-${index}`;
+                    const unstageId = `staged-unstage-${componentId}-${index}`;
+                    
                     html += `<div class="git-file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                        <div style="color: #67ea94; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" onclick="showFileDiff('${componentId}', '${file}')">+ ${file}</div>
-                        <button onclick="unstageFile('${componentId}', '${file}')" style="background: none; border: 1px solid #f48771; color: #f48771; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 8px;" title="Unstage">−</button>
+                        <div id="${fileId}" style="color: #67ea94; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" title="Click to open file">+ ${file}</div>
+                        <button id="${diffId}" style="background: none; border: 1px solid #4a9eff; color: #4a9eff; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 4px;" title="Show diff">≈</button>
+                        <button id="${unstageId}" style="background: none; border: 1px solid #f48771; color: #f48771; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 4px;" title="Unstage">−</button>
                     </div>`;
                 });
                 html += '</div>';
@@ -828,10 +895,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (modified.length > 0) {
                 html += '<div class="git-section" style="margin-bottom: 12px;">';
                 html += '<div style="color: #f48771; font-weight: 600; font-size: 12px; margin-bottom: 6px;">📝 CHANGES</div>';
-                modified.forEach(file => {
+                modified.forEach((file, index) => {
+                    const fileId = `modified-file-${componentId}-${index}`;
+                    const diffId = `modified-diff-${componentId}-${index}`;
+                    const stageId = `modified-stage-${componentId}-${index}`;
+                    
                     html += `<div class="git-file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                        <div style="color: #f48771; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" onclick="showFileDiff('${componentId}', '${file}')">M ${file}</div>
-                        <button onclick="stageFile('${componentId}', '${file}')" style="background: none; border: 1px solid #67ea94; color: #67ea94; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 8px;" title="Stage">+</button>
+                        <div id="${fileId}" style="color: #f48771; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" title="Click to open file">M ${file}</div>
+                        <button id="${diffId}" style="background: none; border: 1px solid #4a9eff; color: #4a9eff; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 4px;" title="Show diff">≈</button>
+                        <button id="${stageId}" style="background: none; border: 1px solid #67ea94; color: #67ea94; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 4px;" title="Stage">+</button>
                     </div>`;
                 });
                 html += '</div>';
@@ -840,17 +912,128 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (untracked.length > 0) {
                 html += '<div class="git-section" style="margin-bottom: 12px;">';
                 html += '<div style="color: #858585; font-weight: 600; font-size: 12px; margin-bottom: 6px;">❓ UNTRACKED FILES</div>';
-                untracked.forEach(file => {
+                untracked.forEach((file, index) => {
+                    const fileId = `untracked-file-${componentId}-${index}`;
+                    const diffId = `untracked-diff-${componentId}-${index}`;
+                    const stageId = `untracked-stage-${componentId}-${index}`;
+                    
                     html += `<div class="git-file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                        <div style="color: #858585; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" onclick="showFileDiff('${componentId}', '${file}')">? ${file}</div>
-                        <button onclick="stageFile('${componentId}', '${file}')" style="background: none; border: 1px solid #67ea94; color: #67ea94; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 8px;" title="Stage">+</button>
+                        <div id="${fileId}" style="color: #858585; font-size: 11px; font-family: monospace; cursor: pointer; flex: 1;" title="Click to open file">? ${file}</div>
+                        <button id="${diffId}" style="background: none; border: 1px solid #4a9eff; color: #4a9eff; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 4px;" title="Show diff">≈</button>
+                        <button id="${stageId}" style="background: none; border: 1px solid #67ea94; color: #67ea94; font-size: 10px; padding: 2px 6px; border-radius: 2px; cursor: pointer; margin-left: 4px;" title="Stage">+</button>
                     </div>`;
                 });
                 html += '</div>';
             }
         }
 
+        console.log('🎨 Setting container innerHTML...');
+        console.log('📝 HTML length:', html.length);
         container.innerHTML = html;
+        console.log('✅ HTML set successfully');
+        
+        // Store file arrays for the click handler to access
+        console.log('💾 Storing file arrays on container...');
+        container._gitFiles = { staged, modified, untracked };
+        console.log('✅ File arrays stored');
+        
+        // Use event delegation - add single listener to container
+        const existingHandler = container._gitClickHandler;
+        if (existingHandler) {
+            container.removeEventListener('click', existingHandler);
+        }
+        
+        const clickHandler = function(event) {
+            const target = event.target;
+            console.log('🖱️ Git container clicked, target:', target);
+            console.log('📍 Target ID:', target.id);
+            console.log('🏷️ Target classes:', target.className);
+            
+            const targetId = target.id;
+            const gitFiles = container._gitFiles || { staged: [], modified: [], untracked: [] };
+            
+            console.log('📁 Available files:', gitFiles);
+            
+            // Parse the ID to get action info
+            if (targetId.includes('-file-')) {
+                // Extract file info from ID
+                let fileInfo = null;
+                let fileIndex = -1;
+                
+                if (targetId.startsWith('staged-file-')) {
+                    fileIndex = parseInt(targetId.split('-').pop());
+                    fileInfo = { type: 'staged', file: gitFiles.staged[fileIndex], action: 'open' };
+                } else if (targetId.startsWith('modified-file-')) {
+                    fileIndex = parseInt(targetId.split('-').pop());
+                    fileInfo = { type: 'modified', file: gitFiles.modified[fileIndex], action: 'open' };
+                } else if (targetId.startsWith('untracked-file-')) {
+                    fileIndex = parseInt(targetId.split('-').pop());
+                    fileInfo = { type: 'untracked', file: gitFiles.untracked[fileIndex], action: 'open' };
+                }
+                
+                console.log('🔍 File info parsed:', fileInfo, 'index:', fileIndex);
+                
+                if (fileInfo && fileInfo.file) {
+                    console.log('📂 Opening file:', fileInfo.file, 'from', fileInfo.type);
+                    window.openFileInEditor(fileInfo.file);
+                } else {
+                    console.error('❌ Could not find file for index:', fileIndex, 'in', fileInfo?.type);
+                }
+            } else if (targetId.includes('-diff-')) {
+                // Handle diff clicks
+                let fileInfo = null;
+                let fileIndex = -1;
+                
+                if (targetId.startsWith('staged-diff-')) {
+                    fileIndex = parseInt(targetId.split('-').pop());
+                    fileInfo = { type: 'staged', file: gitFiles.staged[fileIndex] };
+                } else if (targetId.startsWith('modified-diff-')) {
+                    fileIndex = parseInt(targetId.split('-').pop());
+                    fileInfo = { type: 'modified', file: gitFiles.modified[fileIndex] };
+                } else if (targetId.startsWith('untracked-diff-')) {
+                    fileIndex = parseInt(targetId.split('-').pop());
+                    fileInfo = { type: 'untracked', file: gitFiles.untracked[fileIndex] };
+                }
+                
+                if (fileInfo && fileInfo.file) {
+                    console.log('📊 Showing diff for:', fileInfo.file);
+                    window.showFileDiff(componentId, fileInfo.file);
+                }
+            } else if (targetId.includes('-stage-') || targetId.includes('-unstage-')) {
+                // Handle stage/unstage clicks
+                let fileInfo = null;
+                let fileIndex = -1;
+                
+                if (targetId.startsWith('staged-unstage-')) {
+                    fileIndex = parseInt(targetId.split('-').pop());
+                    fileInfo = { type: 'staged', file: gitFiles.staged[fileIndex], action: 'unstage' };
+                } else if (targetId.startsWith('modified-stage-') || targetId.startsWith('untracked-stage-')) {
+                    fileIndex = parseInt(targetId.split('-').pop());
+                    const fileArray = targetId.startsWith('modified-') ? gitFiles.modified : gitFiles.untracked;
+                    fileInfo = { type: targetId.startsWith('modified-') ? 'modified' : 'untracked', file: fileArray[fileIndex], action: 'stage' };
+                }
+                
+                if (fileInfo && fileInfo.file) {
+                    if (fileInfo.action === 'stage') {
+                        console.log('➕ Staging file:', fileInfo.file);
+                        window.stageFile(componentId, fileInfo.file);
+                    } else if (fileInfo.action === 'unstage') {
+                        console.log('➖ Unstaging file:', fileInfo.file);
+                        window.unstageFile(componentId, fileInfo.file);
+                    }
+                }
+            }
+        };
+        
+        container.addEventListener('click', clickHandler);
+        container._gitClickHandler = clickHandler;
+        
+        console.log('🎯 Event delegation setup complete for componentId:', componentId);
+        
+        } catch (error) {
+            console.error('❌ Error in displayGitStatus:', error);
+            container.innerHTML = '<div class="error" style="color: #f48771; text-align: center; padding: 20px;">Error displaying git status</div>';
+        }
     }
 
     // Git helper functions
@@ -1033,6 +1216,86 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.appendChild(modal);
     }
 
+    window.openFileInEditor = async function(filename) {
+        console.log('🚀 openFileInEditor called with filename:', filename);
+        
+        const projectPath = localStorage.getItem('octo-project-path');
+        console.log('📁 Project path:', projectPath);
+        console.log('🔌 electronAPI available:', !!window.electronAPI);
+        console.log('📖 readTextFile available:', !!(window.electronAPI && window.electronAPI.readTextFile));
+        
+        if (!projectPath || !window.electronAPI || !window.electronAPI.readTextFile) {
+            console.error('❌ Cannot open file: project path or file reading not available');
+            return;
+        }
+        
+        try {
+            // Construct full file path
+            const fullPath = projectPath.endsWith('/') ? projectPath + filename : projectPath + '/' + filename;
+            
+            // Read the file content
+            const content = await window.electronAPI.readTextFile(fullPath);
+            
+            // Create new editor tab
+            const editorId = 'editor-' + Date.now();
+            const fileExtension = filename.split('.').pop();
+            let mode = 'text';
+            
+            // Set appropriate CodeMirror mode based on file extension
+            switch(fileExtension) {
+                case 'js': case 'mjs': case 'jsx': mode = 'javascript'; break;
+                case 'ts': case 'tsx': mode = 'javascript'; break;
+                case 'css': mode = 'css'; break;
+                case 'html': case 'htm': mode = 'htmlmixed'; break;
+                case 'json': mode = 'application/json'; break;
+                case 'md': case 'markdown': mode = 'markdown'; break;
+                case 'py': mode = 'python'; break;
+                case 'java': mode = 'text/x-java'; break;
+                case 'c': case 'h': mode = 'text/x-csrc'; break;
+                case 'cpp': case 'cc': case 'cxx': mode = 'text/x-c++src'; break;
+                case 'php': mode = 'php'; break;
+                case 'rb': mode = 'ruby'; break;
+                case 'go': mode = 'go'; break;
+                case 'rs': mode = 'rust'; break;
+                case 'sh': case 'bash': mode = 'shell'; break;
+                case 'xml': mode = 'xml'; break;
+                case 'yaml': case 'yml': mode = 'yaml'; break;
+                default: mode = 'text';
+            }
+            
+            const newItemConfig = {
+                type: 'component',
+                componentName: 'editor',
+                componentState: { 
+                    id: editorId,
+                    filename: filename,
+                    content: content,
+                    mode: mode
+                },
+                title: filename
+            };
+            
+            const targetStack = ensureStackExists();
+            if (targetStack) {
+                targetStack.addChild(newItemConfig);
+                
+                // Switch to the new tab
+                setTimeout(() => {
+                    if (targetStack.contentItems.length > 0) {
+                        const newTab = targetStack.contentItems[targetStack.contentItems.length - 1];
+                        targetStack.setActiveContentItem(newTab);
+                    }
+                }, 100);
+                
+                console.log('File opened in editor:', filename);
+            }
+        } catch (error) {
+            console.error('Error opening file:', error);
+            // Show error notification
+            showSaveNotification('Error opening file: ' + filename);
+        }
+    };
+
     function initializeEditorComponent(container, componentState, componentId) {
         const element = container.getElement();
         
@@ -1048,9 +1311,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (editorDiv) {
                 try {
+                    const initialContent = componentState.content || `;; Editor ${componentId}\n;; Start coding here!\n`;
+                    const editorMode = componentState.mode || 'text';
+                    
                     editor = CodeMirror(editorDiv, {
-                        value: `;; Editor ${componentId}\n;; Start coding here!\n`,
-                        mode: 'clojure',
+                        value: initialContent,
+                        mode: editorMode,
                         theme: 'dracula',
                         lineNumbers: true,
                         autoCloseBrackets: true,

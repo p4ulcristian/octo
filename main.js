@@ -365,7 +365,7 @@ ipcMain.handle('run-git-command', async (event, command, workingDir) => {
     
     gitProcess.on('close', (code) => {
       if (code === 0) {
-        resolve({ success: true, output: output.trim() });
+        resolve({ success: true, output: output });
       } else {
         resolve({ success: false, error: error.trim() || output.trim() });
       }
