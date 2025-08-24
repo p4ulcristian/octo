@@ -2900,12 +2900,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const componentName = activeTab.config.componentName;
                 console.log('Closing active tab:', componentName, activeTab.config.title);
                 
-                // Don't close if it's the last tab or if it's a core component that shouldn't be closed
+                // Close the tab
                 const parentStack = activeTab.parent;
-                if (parentStack && parentStack.contentItems.length > 1) {
-                    activeTab.remove();
-                } else {
-                    console.log('Cannot close the last remaining tab');
+                if (parentStack) {
+                    // If it's the last tab in the stack, remove the entire stack
+                    if (parentStack.contentItems.length === 1) {
+                        // Check if this is the last stack in the layout
+                        if (parentStack.parent && parentStack.parent.contentItems.length === 1) {
+                            console.log('Closing last tab - clearing layout');
+                            // If it's the very last item, we might want to keep at least an empty layout
+                            // or create a default tab
+                            activeTab.remove();
+                        } else {
+                            // Remove the entire stack if it only has one tab
+                            parentStack.remove();
+                        }
+                    } else {
+                        // Normal case - just remove the tab
+                        activeTab.remove();
+                    }
                 }
             } else {
                 console.log('No active tab found to close');
