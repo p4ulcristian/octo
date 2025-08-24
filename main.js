@@ -51,8 +51,8 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 let mainWindow;
-let browserView;
-let browserMountBounds = null;
+let browserViews = new Map(); // Store multiple browser views
+let activeBrowserId = null; // Track the currently active browser
 let ptyProcess = null;
 let claudePtyProcess = null;
 let terminalProcesses = new Map(); // Store multiple terminal processes
@@ -85,85 +85,120 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
-  browserView = new BrowserView({
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      webSecurity: false,
-      allowRunningInsecureContent: true,
-      experimentalFeatures: true
-    }
-  });
-
-  browserView.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-  mainWindow.addBrowserView(browserView);
-  
-  const contentBounds = mainWindow.getContentBounds();
-  const totalWidth = contentBounds.width;
-  const totalHeight = contentBounds.height;
-  
-  // Position BrowserView in the right panel (right 50% of the window)
-  // Account for header (~50px), panel title (~30px), and browser controls (~40px)
-  const rightPanelStart = Math.floor(totalWidth * 0.5);
-  const rightPanelWidth = Math.floor(totalWidth * 0.5);
-  
-  // Initial positioning - will be updated by browser-mount-bounds
-  browserView.setBounds({ 
-    x: 700,
-    y: 120,
-    width: 600,
-    height: 500
-  });
-  
-  browserView.webContents.loadURL('https://localhost/customize');
+  // Don't create a default browser view anymore - they'll be created on demand
 
   mainWindow.on('resize', () => {
     // Browser position will be updated via browser-mount-bounds message from renderer
   });
 
-  ipcMain.on('navigate-browser', (event, url) => {
+  // Create a new browser view for a specific tab
+  ipcMain.on('create-browser-view', (event, browserId) => {
+    console.log('Creating browser view for:', browserId);
+    
+    if (browserViews.has(browserId)) {
+      console.log('Browser view already exists for:', browserId);
+      return;
+    }
+    
+    const browserView = new BrowserView({
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        webSecurity: false,
+        allowRunningInsecureContent: true,
+        experimentalFeatures: true
+      }
+    });
+    
+    browserView.webContents.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    // Store the browser view
+    browserViews.set(browserId, {
+      view: browserView,
+      bounds: null
+    });
+    
+    // Set up navigation listeners for this specific browser
+    browserView.webContents.on('did-navigate', (event, url) => {
+      mainWindow.webContents.send('browser-navigated', browserId, url);
+    });
+    
+    browserView.webContents.on('did-navigate-in-page', (event, url) => {
+      mainWindow.webContents.send('browser-navigated', browserId, url);
+    });
+    
+    // Load default URL
+    browserView.webContents.loadURL('https://localhost/customize');
+  });
+  
+  ipcMain.on('navigate-browser', (event, browserId, url) => {
+    const browserData = browserViews.get(browserId);
+    if (!browserData) {
+      console.error('Browser view not found for:', browserId);
+      return;
+    }
+    
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
     }
-    browserView.webContents.loadURL(url);
+    browserData.view.webContents.loadURL(url);
   });
 
-  ipcMain.on('browser-back', () => {
-    if (browserView.webContents.canGoBack()) {
-      browserView.webContents.goBack();
+  ipcMain.on('browser-back', (event, browserId) => {
+    const browserData = browserViews.get(browserId);
+    if (browserData && browserData.view.webContents.canGoBack()) {
+      browserData.view.webContents.goBack();
     }
   });
 
-  ipcMain.on('browser-forward', () => {
-    if (browserView.webContents.canGoForward()) {
-      browserView.webContents.goForward();
+  ipcMain.on('browser-forward', (event, browserId) => {
+    const browserData = browserViews.get(browserId);
+    if (browserData && browserData.view.webContents.canGoForward()) {
+      browserData.view.webContents.goForward();
     }
   });
 
-  ipcMain.on('browser-refresh', () => {
-    browserView.webContents.reloadIgnoringCache();
-  });
-
-  ipcMain.on('browser-devtools', () => {
-    if (browserView.webContents.isDevToolsOpened()) {
-      browserView.webContents.closeDevTools();
-    } else {
-      browserView.webContents.openDevTools();
+  ipcMain.on('browser-refresh', (event, browserId) => {
+    const browserData = browserViews.get(browserId);
+    if (browserData) {
+      browserData.view.webContents.reloadIgnoringCache();
     }
   });
 
-  ipcMain.on('hide-browser-view', () => {
-    if (browserView && mainWindow) {
-      mainWindow.removeBrowserView(browserView);
+  ipcMain.on('browser-devtools', (event, browserId) => {
+    const browserData = browserViews.get(browserId);
+    if (browserData) {
+      if (browserData.view.webContents.isDevToolsOpened()) {
+        browserData.view.webContents.closeDevTools();
+      } else {
+        browserData.view.webContents.openDevTools();
+      }
     }
   });
 
-  ipcMain.on('show-browser-view', () => {
-    if (browserView && mainWindow) {
-      mainWindow.addBrowserView(browserView);
-      // Restore the bounds - we'll need to get them from the renderer
-      // For now, just add it back and the renderer will update bounds
+  ipcMain.on('hide-browser-view', (event, browserId) => {
+    const browserData = browserViews.get(browserId);
+    if (browserData && mainWindow) {
+      mainWindow.removeBrowserView(browserData.view);
+    }
+  });
+
+  ipcMain.on('show-browser-view', (event, browserId) => {
+    // Hide all other browser views first
+    browserViews.forEach((data, id) => {
+      if (id !== browserId && mainWindow) {
+        mainWindow.removeBrowserView(data.view);
+      }
+    });
+    
+    const browserData = browserViews.get(browserId);
+    if (browserData && mainWindow) {
+      activeBrowserId = browserId;
+      mainWindow.addBrowserView(browserData.view);
+      // Restore the bounds if we have them
+      if (browserData.bounds) {
+        browserData.view.setBounds(browserData.bounds);
+      }
     }
   });
 
@@ -214,29 +249,42 @@ function createWindow() {
     }
   });
 
-  browserView.webContents.on('did-navigate', (event, url) => {
-    mainWindow.webContents.send('browser-navigated', url);
-  });
+  // Remove old global browser view navigation listeners (now handled per browser view)
 
-  browserView.webContents.on('did-navigate-in-page', (event, url) => {
-    mainWindow.webContents.send('browser-navigated', url);
-  });
-
-  ipcMain.on('browser-mount-bounds', (event, bounds) => {
-    browserMountBounds = bounds;
-    updateBrowserViewPosition();
-  });
-
-  function updateBrowserViewPosition() {
-    if (browserView && browserMountBounds) {
-      browserView.setBounds({
-        x: Math.floor(browserMountBounds.x),
-        y: Math.floor(browserMountBounds.y),
-        width: Math.floor(browserMountBounds.width),
-        height: Math.floor(browserMountBounds.height)
-      });
+  ipcMain.on('browser-mount-bounds', (event, browserId, bounds) => {
+    const browserData = browserViews.get(browserId);
+    if (browserData) {
+      browserData.bounds = {
+        x: Math.floor(bounds.x),
+        y: Math.floor(bounds.y),
+        width: Math.floor(bounds.width),
+        height: Math.floor(bounds.height)
+      };
+      
+      // Only update the position if this is the active browser
+      if (browserId === activeBrowserId) {
+        browserData.view.setBounds(browserData.bounds);
+      }
     }
-  }
+  });
+  
+  // Clean up browser view when tab is closed
+  ipcMain.on('destroy-browser-view', (event, browserId) => {
+    console.log('Destroying browser view for:', browserId);
+    const browserData = browserViews.get(browserId);
+    if (browserData) {
+      if (mainWindow) {
+        mainWindow.removeBrowserView(browserData.view);
+      }
+      // Clean up the browser view
+      browserData.view.webContents.closeDevTools();
+      browserViews.delete(browserId);
+      
+      if (activeBrowserId === browserId) {
+        activeBrowserId = null;
+      }
+    }
+  })
 
   ipcMain.on('panel-resized', (event, panelType, sizes) => {
     // Browser position will be updated via browser-mount-bounds message
@@ -326,8 +374,14 @@ function createWindow() {
   Menu.setApplicationMenu(menu);
 
   mainWindow.on('closed', () => {
+    // Clean up all browser views
+    browserViews.forEach((data) => {
+      if (data.view.webContents) {
+        data.view.webContents.closeDevTools();
+      }
+    });
+    browserViews.clear();
     mainWindow = null;
-    browserView = null;
   });
 }
 

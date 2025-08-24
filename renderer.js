@@ -215,15 +215,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const preview = contentInstances.previews[componentId];
                         if (preview && preview.updateBounds) {
                             if (window.electronAPI && window.electronAPI.showBrowserView) {
-                                window.electronAPI.showBrowserView();
+                                window.electronAPI.showBrowserView(componentId);
                             }
                             preview.updateBounds();
                         }
                     }, 100);
                 } else {
                     // Hide browser view for non-preview tabs
-                    if (window.electronAPI && window.electronAPI.hideBrowserView) {
-                        window.electronAPI.hideBrowserView();
+                    // Find any active browser to hide
+                    const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                        contentInstances.previews[id] && contentInstances.previews[id].isActive
+                    );
+                    if (activeBrowserId && window.electronAPI && window.electronAPI.hideBrowserView) {
+                        window.electronAPI.hideBrowserView(activeBrowserId);
                     }
                     
                     // Make sure all preview instances are marked as inactive
@@ -302,6 +306,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     function initializePreviewComponent(container, componentState, componentId) {
         const element = container.getElement();
         
+        // Create the browser view for this component
+        if (window.electronAPI && window.electronAPI.createBrowserView) {
+            window.electronAPI.createBrowserView(componentId);
+        }
+        
         element.html(`
             <div id="preview-${componentId}" style="height: 100%; width: 100%; display: flex; flex-direction: column;">
                 <div class="browser-header" style="height: 40px; background: #2d2d30; border-bottom: 1px solid #3e3e42; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; gap: 8px;">
@@ -326,15 +335,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (e.key === 'Enter') {
                     const url = urlInput.value.trim();
                     if (url && window.electronAPI && window.electronAPI.navigateBrowser) {
-                        window.electronAPI.navigateBrowser(url);
-                        // Save URL to localStorage
-                        localStorage.setItem('octo-preview-url', url);
+                        window.electronAPI.navigateBrowser(componentId, url);
+                        // Save URL to localStorage per browser
+                        localStorage.setItem(`octo-preview-url-${componentId}`, url);
                     }
                 }
             });
             
-            // Load saved URL if available
-            const savedUrl = localStorage.getItem('octo-preview-url');
+            // Load saved URL if available for this specific browser
+            const savedUrl = localStorage.getItem(`octo-preview-url-${componentId}`) || localStorage.getItem('octo-preview-url');
             if (savedUrl) {
                 urlInput.value = savedUrl;
             }
@@ -344,7 +353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (reloadBtn) {
             reloadBtn.addEventListener('click', () => {
                 if (window.electronAPI && window.electronAPI.browserRefresh) {
-                    window.electronAPI.browserRefresh();
+                    window.electronAPI.browserRefresh(componentId);
                 }
             });
         }
@@ -353,16 +362,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (devtoolsBtn) {
             devtoolsBtn.addEventListener('click', () => {
                 if (window.electronAPI && window.electronAPI.browserDevTools) {
-                    window.electronAPI.browserDevTools();
+                    window.electronAPI.browserDevTools(componentId);
                 }
             });
         }
         
         // Listen for browser navigation to update URL input
         if (urlInput && window.electronAPI && window.electronAPI.onBrowserNavigated) {
-            window.electronAPI.onBrowserNavigated((url) => {
-                urlInput.value = url;
-                localStorage.setItem('octo-preview-url', url);
+            window.electronAPI.onBrowserNavigated((browserId, url) => {
+                if (browserId === componentId) {
+                    urlInput.value = url;
+                    localStorage.setItem(`octo-preview-url-${componentId}`, url);
+                }
             });
         }
         
@@ -380,7 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
                 
                 console.log(`Updating browser bounds for ${componentId}:`, adjustedBounds);
-                window.electronAPI.sendBrowserMountBounds(adjustedBounds);
+                window.electronAPI.sendBrowserMountBounds(componentId, adjustedBounds);
             }
         }
 
@@ -394,8 +405,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (hasActiveBrowser) {
                     isDragging = true;
                     console.log('Global drag started - hiding active browser view');
-                    if (window.electronAPI && window.electronAPI.hideBrowserView) {
-                        window.electronAPI.hideBrowserView();
+                    // Find the active browser ID
+                    const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                        contentInstances.previews[id] && contentInstances.previews[id].isActive
+                    );
+                    if (activeBrowserId && window.electronAPI && window.electronAPI.hideBrowserView) {
+                        window.electronAPI.hideBrowserView(activeBrowserId);
                     }
                 }
             }
@@ -409,8 +424,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Find and restore the active browser view
                     const activePreview = Object.values(contentInstances.previews).find(preview => preview && preview.isActive);
                     if (activePreview) {
-                        if (window.electronAPI && window.electronAPI.showBrowserView) {
-                            window.electronAPI.showBrowserView();
+                        // Find the active browser ID
+                        const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                            contentInstances.previews[id] === activePreview
+                        );
+                        if (activeBrowserId && window.electronAPI && window.electronAPI.showBrowserView) {
+                            window.electronAPI.showBrowserView(activeBrowserId);
                         }
                         activePreview.updateBounds();
                     }
@@ -453,8 +472,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Find and restore the active browser view
                     const activePreview = Object.values(contentInstances.previews).find(preview => preview && preview.isActive);
                     if (activePreview) {
-                        if (window.electronAPI && window.electronAPI.showBrowserView) {
-                            window.electronAPI.showBrowserView();
+                        // Find the active browser ID
+                        const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                            contentInstances.previews[id] === activePreview
+                        );
+                        if (activeBrowserId && window.electronAPI && window.electronAPI.showBrowserView) {
+                            window.electronAPI.showBrowserView(activeBrowserId);
                         }
                         activePreview.updateBounds();
                     }
@@ -498,7 +521,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             contentInstances.previews[componentId].isActive = true;
             
             if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
+                window.electronAPI.showBrowserView(componentId);
                 setTimeout(updateBrowserMountBounds, 100);
             }
         }
@@ -512,7 +535,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             if (window.electronAPI && window.electronAPI.hideBrowserView) {
-                window.electronAPI.hideBrowserView();
+                window.electronAPI.hideBrowserView(componentId);
             }
         }
 
@@ -526,6 +549,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Cleanup function
         cleanupFunctions[componentId] = function() {
+            // Destroy the browser view when tab is closed
+            if (window.electronAPI && window.electronAPI.destroyBrowserView) {
+                window.electronAPI.destroyBrowserView(componentId);
+            }
             if (contentInstances.previews[componentId]) {
                 delete contentInstances.previews[componentId];
             }
@@ -538,7 +565,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Navigating to saved preview URL:', savedUrl);
             setTimeout(() => {
                 if (window.electronAPI && window.electronAPI.navigateBrowser) {
-                    window.electronAPI.navigateBrowser(savedUrl);
+                    window.electronAPI.navigateBrowser(componentId, savedUrl);
                 }
             }, 1000);
         }
@@ -2414,8 +2441,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Navigate browser if preview URL is set
             if (previewInput.value.trim()) {
-                if (window.electronAPI && window.electronAPI.navigateBrowser) {
-                    window.electronAPI.navigateBrowser(previewInput.value);
+                // Find the active browser ID
+                const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                    contentInstances.previews[id] && contentInstances.previews[id].isActive
+                );
+                if (activeBrowserId && window.electronAPI && window.electronAPI.navigateBrowser) {
+                    window.electronAPI.navigateBrowser(activeBrowserId, previewInput.value);
                 }
             }
             
@@ -2440,14 +2471,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const existingPopup = document.querySelector('.script-popup');
         if (existingPopup) {
             existingPopup.remove();
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
+            // Find and show the active browser if there is one
+            const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                contentInstances.previews[id] && contentInstances.previews[id].isActive
+            );
+            if (activeBrowserId && window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView(activeBrowserId);
             }
             return;
         }
         
-        if (window.electronAPI && window.electronAPI.hideBrowserView) {
-            window.electronAPI.hideBrowserView();
+        // Find and hide the active browser if there is one
+        const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+            contentInstances.previews[id] && contentInstances.previews[id].isActive
+        );
+        if (activeBrowserId && window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView(activeBrowserId);
         }
         
         const savedScript = localStorage.getItem('octo-script') || '';
@@ -2495,8 +2534,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         cancelBtn.addEventListener('click', () => {
             popup.remove();
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
+            // Find and show the active browser if there is one
+            const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                contentInstances.previews[id] && contentInstances.previews[id].isActive
+            );
+            if (activeBrowserId && window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView(activeBrowserId);
             }
         });
         
@@ -2549,8 +2592,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        if (window.electronAPI && window.electronAPI.hideBrowserView) {
-            window.electronAPI.hideBrowserView();
+        // Find and hide the active browser if there is one
+        const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+            contentInstances.previews[id] && contentInstances.previews[id].isActive
+        );
+        if (activeBrowserId && window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView(activeBrowserId);
         }
         
         const savedPath = localStorage.getItem('octo-project-path') || '';
@@ -2614,8 +2661,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         cancelBtn.addEventListener('click', () => {
             popup.remove();
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
+            // Find and show the active browser if there is one
+            const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                contentInstances.previews[id] && contentInstances.previews[id].isActive
+            );
+            if (activeBrowserId && window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView(activeBrowserId);
             }
         });
         
@@ -2639,8 +2690,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        if (window.electronAPI && window.electronAPI.hideBrowserView) {
-            window.electronAPI.hideBrowserView();
+        // Find and hide the active browser if there is one
+        const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+            contentInstances.previews[id] && contentInstances.previews[id].isActive
+        );
+        if (activeBrowserId && window.electronAPI && window.electronAPI.hideBrowserView) {
+            window.electronAPI.hideBrowserView(activeBrowserId);
         }
         
         const savedUrl = localStorage.getItem('octo-preview-url') || 'http://localhost:3000';
@@ -2689,19 +2744,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         goBtn.addEventListener('click', () => {
             const urlContent = input.value;
-            if (window.electronAPI && window.electronAPI.navigateBrowser) {
-                window.electronAPI.navigateBrowser(urlContent);
+            // Find the active browser ID
+            const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                contentInstances.previews[id] && contentInstances.previews[id].isActive
+            );
+            if (activeBrowserId && window.electronAPI && window.electronAPI.navigateBrowser) {
+                window.electronAPI.navigateBrowser(activeBrowserId, urlContent);
             }
             popup.remove();
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
+            // Show the active browser if there is one (reuse the same activeBrowserId)
+            if (activeBrowserId && window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView(activeBrowserId);
             }
         });
         
         cancelBtn.addEventListener('click', () => {
             popup.remove();
-            if (window.electronAPI && window.electronAPI.showBrowserView) {
-                window.electronAPI.showBrowserView();
+            // Find and show the active browser if there is one
+            const activeBrowserId = Object.keys(contentInstances.previews).find(id => 
+                contentInstances.previews[id] && contentInstances.previews[id].isActive
+            );
+            if (activeBrowserId && window.electronAPI && window.electronAPI.showBrowserView) {
+                window.electronAPI.showBrowserView(activeBrowserId);
             }
         });
         
