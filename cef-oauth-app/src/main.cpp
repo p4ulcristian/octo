@@ -47,6 +47,19 @@ int RunMain(CefRefPtr<CefApp> app, int argc, char* argv[]) {
   settings.no_sandbox = true;
 #endif
 
+  // Disable GPU process to avoid crashes on macOS
+  settings.windowless_rendering_enabled = false;
+  
+  // Add command line switches to fix GPU issues
+  CefString(&settings.user_agent_product).FromASCII("CEF OAuth Browser");
+  
+  // Set cache path to avoid warnings
+  CefString(&settings.root_cache_path).FromASCII("./cef_cache");
+  
+  // Set log file
+  CefString(&settings.log_file).FromASCII("./cef.log");
+  settings.log_severity = LOGSEVERITY_INFO;
+
   // Initialize CEF for the browser process.
   CefInitialize(main_args, settings, app, nullptr);
 

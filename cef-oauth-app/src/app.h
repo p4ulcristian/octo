@@ -13,6 +13,8 @@ class App : public CefApp, public CefBrowserProcessHandler {
   }
 
   // CefBrowserProcessHandler methods:
+  void OnBeforeCommandLineProcessing(const CefString& process_type,
+                                     CefRefPtr<CefCommandLine> command_line) override;
   void OnContextInitialized() override;
 
  private:

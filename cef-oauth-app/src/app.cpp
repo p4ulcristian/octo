@@ -13,13 +13,24 @@
 #endif
 
 #include "main_handler.h"
+#include "browser_window.h"
 
 App::App() {}
+
+void App::OnBeforeCommandLineProcessing(const CefString& process_type,
+                                        CefRefPtr<CefCommandLine> command_line) {
+  // Run everything in-process to avoid crashes
+  command_line->AppendSwitch("single-process");
+  command_line->AppendSwitch("disable-web-security");
+  command_line->AppendSwitch("disable-features=VizDisplayCompositor");
+}
 
 void App::OnContextInitialized() {
   CEF_REQUIRE_UI_THREAD();
 
-  CefRefPtr<MainHandler> handler(new MainHandler(false));
+#if 1  // Use Views framework for better UI
+  // Create browser window with navigation controls
+  CefRefPtr<BrowserWindow> browser_window = new BrowserWindow();
 
   // Specify CEF browser settings here
   CefBrowserSettings browser_settings;
@@ -37,31 +48,12 @@ void App::OnContextInitialized() {
     }
   }
   
-  // Default to bundled test HTML file if no URL provided
+  // Default to a simple data URL if no URL provided
   if (url.empty()) {
-#if defined(OS_MACOSX)
-    // Get the path to the app bundle Resources directory
-    url = "file:///Contents/Resources/test.html";
-    // Try to get the bundle path programmatically
-    CFBundleRef bundle = CFBundleGetMainBundle();
-    if (bundle) {
-      CFURLRef resourceURL = CFBundleCopyResourceURL(bundle, CFSTR("test"), CFSTR("html"), nullptr);
-      if (resourceURL) {
-        CFStringRef path = CFURLCopyFileSystemPath(resourceURL, kCFURLPOSIXPathStyle);
-        if (path) {
-          char pathBuffer[1024];
-          if (CFStringGetCString(path, pathBuffer, sizeof(pathBuffer), kCFStringEncodingUTF8)) {
-            url = std::string("file://") + pathBuffer;
-          }
-          CFRelease(path);
-        }
-        CFRelease(resourceURL);
-      }
-    }
-#else
-    url = "https://www.google.com";
-#endif
+    url = "data:text/html,<html><head><title>CEF OAuth Browser</title></head><body style='font-family:Arial;padding:50px;'><h1>CEF OAuth Browser is Working!</h1><p>This browser is running Chrome 139 with OAuth interception.</p><p>Navigate to any OAuth provider to test the functionality:</p><ul><li><a href='https://accounts.google.com'>Google OAuth</a></li><li><a href='https://github.com/login'>GitHub OAuth</a></li><li><a href='https://www.google.com'>Test Google.com</a></li></ul></body></html>";
   }
+
+  printf("Creating browser with URL: %s\n", url.c_str());
 
   // Information used when creating the native window
   CefWindowInfo window_info;
@@ -80,7 +72,12 @@ void App::OnContextInitialized() {
   CefString(&window_info.window_name).FromASCII("CEF OAuth App");
 #endif
 
-  // Create the first browser window
+  // Create browser window with UI controls
+  browser_window->CreateBrowserWindow(url);
+#else
+  // Fallback to old method without Views
+  CefRefPtr<MainHandler> handler(new MainHandler(false));
   CefBrowserHost::CreateBrowser(window_info, handler, url, browser_settings,
                                 nullptr, nullptr);
+#endif
 }

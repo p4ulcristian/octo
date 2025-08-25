@@ -35,16 +35,17 @@ fi
 
 print_status "Downloading CEF for $PLATFORM..."
 
-# Known working CEF versions (you may need to update these)
+# Latest CEF versions for 2025
 case $PLATFORM in
     "macos")
         # Check if we're on Apple Silicon
         if [[ $(uname -m) == "arm64" ]]; then
-            CEF_URL="https://cef-builds.spotifycdn.com/cef_binary_119.4.7+g55e15c8+chromium-119.0.6045.199_macosarm64_minimal.tar.bz2"
-            CEF_FILENAME="cef_binary_119.4.7+g55e15c8+chromium-119.0.6045.199_macosarm64_minimal.tar.bz2"
+            # Latest CEF 139 for macOS ARM64 (matches Chrome 139 stable)
+            CEF_URL="https://cef-builds.spotifycdn.com/cef_binary_139.0.23+g34a5b51+chromium-139.0.7258.128_macosarm64.tar.bz2"
+            CEF_FILENAME="cef_binary_139.0.23+g34a5b51+chromium-139.0.7258.128_macosarm64.tar.bz2"
         else
-            CEF_URL="https://cef-builds.spotifycdn.com/cef_binary_119.4.7+g55e15c8+chromium-119.0.6045.199_macosx64_minimal.tar.bz2"
-            CEF_FILENAME="cef_binary_119.4.7+g55e15c8+chromium-119.0.6045.199_macosx64_minimal.tar.bz2"
+            CEF_URL="https://cef-builds.spotifycdn.com/cef_binary_131.3.3+g98e5a2a+chromium-131.0.6778.205_macosx64.tar.bz2"
+            CEF_FILENAME="cef_binary_131.3.3+g98e5a2a+chromium-131.0.6778.205_macosx64.tar.bz2"
         fi
         ;;
     "linux")

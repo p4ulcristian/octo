@@ -52,6 +52,8 @@ set(SOURCES
     src/oauth_handler.h
     src/main_handler.cpp
     src/main_handler.h
+    src/simple_browser_window.cpp
+    src/browser_window.h
 )
 
 # Determine the target output directory

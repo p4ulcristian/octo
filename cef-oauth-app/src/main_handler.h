@@ -2,6 +2,10 @@
 #define CEF_OAUTH_MAIN_HANDLER_H_
 
 #include "include/cef_client.h"
+#include "include/views/cef_browser_view.h"
+#include "include/views/cef_window.h"
+#include "include/views/cef_textfield.h"
+#include "include/views/cef_button.h"
 
 #include <list>
 
@@ -37,6 +41,7 @@ class MainHandler : public CefClient,
   // CefLifeSpanHandler methods:
   bool OnBeforePopup(CefRefPtr<CefBrowser> browser,
                      CefRefPtr<CefFrame> frame,
+                     int popup_id,
                      const CefString& target_url,
                      const CefString& target_frame_name,
                      CefLifeSpanHandler::WindowOpenDisposition target_disposition,
