@@ -24,30 +24,40 @@
                     backing:NSBackingStoreBuffered
                       defer:NO];
     
-    [window setTitle:@"CEF OAuth Browser - Google | YouTube"];
+    [window setTitle:@"CEF OAuth Browser - Resizable Split View"];
     [window setDelegate:(id<NSWindowDelegate>)self];
     
     // Create the main content view
     NSView* contentView = [window contentView];
     
+    // Create an NSSplitView for resizable divider
+    split_view_ = [[NSSplitView alloc] initWithFrame:[contentView bounds]];
+    [split_view_ setVertical:YES];  // Vertical split (left/right panes)
+    [split_view_ setDividerStyle:NSSplitViewDividerStyleThin];
+    [split_view_ setDelegate:(id<NSSplitViewDelegate>)self];
+    [split_view_ setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    
     // Create left browser view container
-    NSRect leftFrame = NSMakeRect(0, 0, 700, 800);
-    left_browser_view_ = [[NSView alloc] initWithFrame:leftFrame];
+    left_browser_view_ = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 700, 800)];
     [left_browser_view_ setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     
     // Create right browser view container  
-    NSRect rightFrame = NSMakeRect(700, 0, 700, 800);
-    right_browser_view_ = [[NSView alloc] initWithFrame:rightFrame];
+    right_browser_view_ = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 700, 800)];
     [right_browser_view_ setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     
-    // Add both views to content view
-    [contentView addSubview:left_browser_view_];
-    [contentView addSubview:right_browser_view_];
+    // Add both views to split view
+    [split_view_ addSubview:left_browser_view_];
+    [split_view_ addSubview:right_browser_view_];
+    
+    // Add split view to content view
+    [contentView addSubview:split_view_];
     
     // Set window and show
     self.window = window;
     [window makeKeyAndOrderFront:nil];
     [window center];
+    
+    printf("Created resizable split view window\n");
     
     // Create CEF browsers after window is shown
     [self performSelector:@selector(createCEFBrowsers) 
@@ -89,6 +99,40 @@
     }
     if (right_browser_) {
         right_browser_->GetMainFrame()->LoadURL([rightURL UTF8String]);
+    }
+}
+
+// Method to store browser references when they are created
+- (void)setBrowsers:(CefRefPtr<CefBrowser>)leftBrowser 
+       rightBrowser:(CefRefPtr<CefBrowser>)rightBrowser {
+    left_browser_ = leftBrowser;
+    right_browser_ = rightBrowser;
+    printf("Browser references stored for resizing\n");
+}
+
+// NSSplitViewDelegate methods for resizable divider
+- (BOOL)splitView:(NSSplitView*)splitView canCollapseSubview:(NSView*)subview {
+    return NO; // Prevent collapsing panes completely
+}
+
+- (CGFloat)splitView:(NSSplitView*)splitView constrainMinCoordinate:(CGFloat)proposedMin 
+          ofSubviewAt:(NSInteger)dividerIndex {
+    return 200.0; // Minimum width for left pane
+}
+
+- (CGFloat)splitView:(NSSplitView*)splitView constrainMaxCoordinate:(CGFloat)proposedMax 
+          ofSubviewAt:(NSInteger)dividerIndex {
+    return [splitView frame].size.width - 200.0; // Minimum width for right pane
+}
+
+- (void)splitViewDidResizeSubviews:(NSNotification*)notification {
+    // Called when the user drags the divider - resize CEF browsers
+    if (left_browser_ && right_browser_) {
+        // Tell CEF browsers to resize
+        left_browser_->GetHost()->WasResized();
+        right_browser_->GetHost()->WasResized();
+        
+        printf("Split view resized - CEF browsers updated\n");
     }
 }
 
