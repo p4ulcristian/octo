@@ -6,26 +6,31 @@ BrowserWindow::BrowserWindow() : handler_(new MainHandler(true)) {}
 void BrowserWindow::CreateBrowserWindow(const CefString& url) {
   CEF_REQUIRE_UI_THREAD();
   
-  // Create a simple browser view without Views framework
-  // since the CEF version doesn't have all the APIs we need
-  CefWindowInfo window_info;
+  printf("Creating dual browser windows - Google & YouTube\n");
   
-#if defined(OS_WIN)
-  window_info.SetAsPopup(nullptr, "CEF OAuth Browser");
-  window_info.width = 1200;
-  window_info.height = 800;
-#elif defined(OS_MACOSX)
-  // On macOS, create as a top-level window
-  CefRect window_bounds(100, 100, 1200, 800);
-  window_info.SetAsChild(nullptr, window_bounds);
-  CefString(&window_info.window_name).FromASCII("CEF OAuth Browser");
+  // Create left browser (Google) 
+  CefWindowInfo left_window_info;
+#if defined(OS_MACOSX)
+  CefRect left_bounds(100, 100, 600, 800);  // Left half
+  left_window_info.SetAsChild(nullptr, left_bounds);
+  CefString(&left_window_info.window_name).FromASCII("Google - CEF OAuth Browser");
 #endif
-
-  CefBrowserSettings browser_settings;
   
-  // Create the browser without Views UI for now
-  CefBrowserHost::CreateBrowser(window_info, handler_, url, browser_settings,
-                                nullptr, nullptr);
+  CefBrowserSettings left_browser_settings;
+  CefBrowserHost::CreateBrowser(left_window_info, handler_, "https://www.google.com", 
+                                left_browser_settings, nullptr, nullptr);
+  
+  // Create right browser (YouTube)
+  CefWindowInfo right_window_info;
+#if defined(OS_MACOSX)
+  CefRect right_bounds(700, 100, 600, 800);  // Right half
+  right_window_info.SetAsChild(nullptr, right_bounds);
+  CefString(&right_window_info.window_name).FromASCII("YouTube - CEF OAuth Browser");
+#endif
+  
+  CefBrowserSettings right_browser_settings;
+  CefBrowserHost::CreateBrowser(right_window_info, handler_, "https://www.youtube.com",
+                                right_browser_settings, nullptr, nullptr);
 }
 
 // Stub implementations for the delegate methods

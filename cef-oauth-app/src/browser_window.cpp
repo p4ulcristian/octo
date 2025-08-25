@@ -1,88 +1,31 @@
 #include "browser_window.h"
 #include "include/wrapper/cef_helpers.h"
 
+#if defined(OS_MACOSX)
+// Forward declaration to avoid Objective-C headers in C++ file
+class NativeMacWindow {
+public:
+  static void CreateDualBrowserWindow(CefRefPtr<MainHandler> handler);
+};
+#endif
+
 BrowserWindow::BrowserWindow() : handler_(new MainHandler(true)) {}
 
 void BrowserWindow::CreateBrowserWindow(const CefString& url) {
   CEF_REQUIRE_UI_THREAD();
   
-  // Create the BrowserView
+  printf("Creating native macOS window with dual CEF browsers\n");
+  
+#if defined(OS_MACOSX)
+  // Use our native macOS window implementation
+  NativeMacWindow::CreateDualBrowserWindow(handler_);
+#else
+  // Fallback for other platforms - create simple browser
+  CefWindowInfo window_info;
   CefBrowserSettings browser_settings;
-  browser_view_ = CefBrowserView::CreateBrowserView(
-      handler_, url, browser_settings, nullptr, nullptr, this);
-  
-  // Create the Window
-  window_ = CefWindow::CreateTopLevelWindow(this);
-  
-  // Set window title
-  window_->SetTitle("CEF OAuth Browser");
-  
-  // Create the main panel that will contain navigation bar and browser
-  CefRefPtr<CefPanel> panel = CefPanel::CreatePanel(nullptr);
-  CefRefPtr<CefBoxLayout> layout = CefBoxLayout::CreateBoxLayout(
-      CEF_AXIS_LAYOUT_VERTICAL, CefInsets(), 0);
-  panel->SetLayout(layout);
-  
-  // Create navigation bar
-  CefRefPtr<CefPanel> nav_bar = CefPanel::CreatePanel(nullptr);
-  CefRefPtr<CefBoxLayout> nav_layout = CefBoxLayout::CreateBoxLayout(
-      CEF_AXIS_LAYOUT_HORIZONTAL, CefInsets(5, 5, 5, 5), 5);
-  nav_bar->SetLayout(nav_layout);
-  nav_bar->SetHeightDIP(40);
-  
-  // Create navigation buttons
-  back_button_ = CefLabelButton::CreateLabelButton(
-      this, "←", true);
-  back_button_->SetID(ID_BACK_BUTTON);
-  back_button_->SetMinimumSizeDIP(CefSize(30, 30));
-  nav_bar->AddChildView(back_button_);
-  
-  forward_button_ = CefLabelButton::CreateLabelButton(
-      this, "→", true);
-  forward_button_->SetID(ID_FORWARD_BUTTON);
-  forward_button_->SetMinimumSizeDIP(CefSize(30, 30));
-  nav_bar->AddChildView(forward_button_);
-  
-  reload_button_ = CefLabelButton::CreateLabelButton(
-      this, "↻", true);
-  reload_button_->SetID(ID_RELOAD_BUTTON);
-  reload_button_->SetMinimumSizeDIP(CefSize(30, 30));
-  nav_bar->AddChildView(reload_button_);
-  
-  stop_button_ = CefLabelButton::CreateLabelButton(
-      this, "✕", true);
-  stop_button_->SetID(ID_STOP_BUTTON);
-  stop_button_->SetMinimumSizeDIP(CefSize(30, 30));
-  nav_bar->AddChildView(stop_button_);
-  
-  // Create URL bar
-  address_bar_ = CefTextfield::CreateTextfield(this);
-  address_bar_->SetText(url);
-  address_bar_->SetTextColor(0xFF000000);
-  address_bar_->SetBackgroundColor(0xFFFFFFFF);
-  nav_layout->SetFlexForView(address_bar_, 1);  // Make URL bar expand
-  nav_bar->AddChildView(address_bar_);
-  
-  // Add OAuth test button
-  CefRefPtr<CefLabelButton> oauth_button = CefLabelButton::CreateLabelButton(
-      nullptr, "OAuth Test", true);
-  oauth_button->SetMinimumSizeDIP(CefSize(80, 30));
-  nav_bar->AddChildView(oauth_button);
-  
-  // Add navigation bar and browser view to main panel
-  panel->AddChildView(nav_bar);
-  layout->SetFlexForView(browser_view_, 1);  // Make browser view expand
-  panel->AddChildView(browser_view_);
-  
-  // Add panel to window
-  window_->AddChildView(panel);
-  
-  // Show the window
-  window_->CenterWindow(CefSize(1200, 800));
-  window_->Show();
-  
-  // Focus the browser view
-  browser_view_->RequestFocus();
+  CefBrowserHost::CreateBrowser(window_info, handler_, url, browser_settings,
+                                nullptr, nullptr);
+#endif
 }
 
 void BrowserWindow::OnBrowserCreated(CefRefPtr<CefBrowserView> browser_view,

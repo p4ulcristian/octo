@@ -52,8 +52,10 @@ set(SOURCES
     src/oauth_handler.h
     src/main_handler.cpp
     src/main_handler.h
-    src/simple_browser_window.cpp
+    src/browser_window.cpp
     src/browser_window.h
+    src/native_window_mac.h
+    src/native_window_mac.mm
 )
 
 # Determine the target output directory
@@ -78,6 +80,8 @@ if(APPLE)
     set_target_properties(${CEF_TARGET} PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/resources/mac/Info.plist.in
     )
+    # Link Cocoa framework for native window creation
+    target_link_libraries(${CEF_TARGET} "-framework Cocoa")
 endif()
 
 # Copy CEF binary and resource files to the target output directory
