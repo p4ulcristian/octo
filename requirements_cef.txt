@@ -1,2 +1,6 @@
 PyQt6==6.9.1
 PyQt6-WebEngine==6.9.0
+pexpect==4.9.0
+ptyprocess==0.7.0
+websockets==15.0.1
+bottle==0.13.4
