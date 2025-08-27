@@ -1,84 +1,107 @@
-# Python Chrome Browser with Embedded CEF
+# CEF Terminal & Browser Application
 
-A Python application that implements a Chrome-like browser interface using PyWebView (which uses the system's WebKit/Chromium engine).
+A professional Python application with a real PTY terminal and Chromium browser, built with PyQt6 WebEngine and xterm.js.
 
 ## Features
 
-- **Full Browser Interface**: Chrome-like UI with navigation toolbar
-- **URL Navigation**: Enter URLs or search terms in the address bar
-- **Browser Controls**: Back, Forward, and Refresh buttons
-- **History Management**: Navigate through browsing history
-- **Embedded Browser**: Uses system's native browser engine via PyWebView
+- **Real PTY Terminal**: Full TTY support with xterm.js frontend
+- **Chromium Browser**: Complete web browser with CEF/WebEngine  
+- **Split Screen**: Terminal and browser side-by-side
+- **Professional UI**: Dark theme, resizable panes
+- **Full Compatibility**: Works with vim, htop, ssh, and all interactive programs
 
 ## Requirements
 
-- Python 3.8+
-- macOS (uses WebKit engine)
+- Python 3.12+ (for PyQt6 WebEngine compatibility)
+- macOS, Windows, or Linux
 - Virtual environment recommended
 
 ## Installation
 
-1. Clone or download this project
-2. Create and activate a virtual environment:
+1. Clone this project
+2. Create virtual environment with Python 3.12:
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate
+   python3.12 -m venv venv_cef
+   source venv_cef/bin/activate
    ```
 
 3. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements_cef.txt
    ```
 
 ## Running the Application
 
-### Method 1: Direct execution
+### Direct execution:
 ```bash
-source venv/bin/activate
-python main.py
+source venv_cef/bin/activate
+python proper_terminal.py
 ```
 
-### Method 2: Using the run script
+### Using launcher:
 ```bash
-python3 run.py
+python3 run_proper_terminal.py
 ```
 
 ## Usage
 
-1. The application opens with a Chrome-like browser window
-2. Enter URLs in the address bar or type search terms
-3. Use navigation buttons:
-   - **Back**: Go to previous page
-   - **Forward**: Go to next page (after going back)
-   - **Refresh**: Reload current page
-4. The browser automatically adds `https://` to domain names and searches Google for other queries
+1. **Terminal (Left Side)**:
+   - Click in terminal area and start typing
+   - Full shell with your `$SHELL` (bash/zsh)
+   - All interactive programs work: `vim`, `htop`, `python`, `ssh`
+   - Proper colors, cursor, and ANSI escape sequences
 
-## Architecture
+2. **Browser (Right Side)**:
+   - Enter URLs in top bar
+   - Full Chromium engine - loads all websites
+   - No iframe restrictions
 
-- **PyWebView**: Provides the native window and WebKit integration
-- **Bottle**: Lightweight web server for serving the browser interface
-- **HTML/CSS/JavaScript**: Browser UI and functionality
-- **Threading**: Separate thread for the local web server
+3. **Controls**:
+   - Drag middle divider to resize panes
+   - Standard terminal shortcuts: Ctrl+C, Ctrl+D, Ctrl+Z
+   - Arrow keys for command history
+
+## Technical Details
+
+### Architecture
+- **PyQt6 WebEngine**: Real Chromium browser engine
+- **xterm.js**: Professional terminal emulator (same as VS Code)
+- **Real PTY**: Uses `pty.openpty()` for true TTY support
+- **WebSocket**: Bridges PTY output to browser terminal
+- **Multi-threading**: Separate threads for PTY I/O and servers
+
+### Terminal Features
+- **True PTY**: Not subprocess - real pseudo-terminal
+- **Full ANSI support**: Colors, cursor positioning, escape sequences  
+- **Interactive programs**: vim, nano, htop, less, ssh all work perfectly
+- **Proper resizing**: SIGWINCH signals sent on window resize
+- **Shell integration**: Full environment, PATH, and shell features
 
 ## Files
 
-- `main.py`: Main application with browser implementation
-- `run.py`: Launcher script that handles virtual environment
-- `requirements.txt`: Python dependencies
+- `proper_terminal.py`: Main application
+- `run_proper_terminal.py`: Launcher script  
+- `requirements_cef.txt`: Dependencies
 - `README.md`: This documentation
 
-## Limitations
+## Troubleshooting
 
-- Limited to websites that allow iframe embedding
-- Some websites may not load due to X-Frame-Options restrictions
-- No support for browser extensions or plugins
-- Basic feature set compared to full browsers
+**If terminal doesn't connect:**
+- Check that WebSocket server starts on port 8081
+- Ensure no firewall blocking localhost connections
 
-## Extending the Application
+**If browser doesn't load:**
+- Verify PyQt6-WebEngine is installed correctly
+- Check system has WebEngine dependencies
 
-The browser can be extended by:
-- Adding more navigation features to the HTML interface
-- Implementing bookmarks functionality
-- Adding download management
-- Creating multiple tab support
-- Adding developer tools integration
+**For interactive programs:**
+- Terminal fully supports vim, htop, ssh, etc.
+- Use standard terminal shortcuts (Ctrl+C, Ctrl+D)
+- Colors and cursor work properly
+
+## Development
+
+This is a production-ready terminal emulator using industry-standard components:
+- **xterm.js**: Powers VS Code, Hyper, and many professional terminals
+- **PyQt6 WebEngine**: Based on Chromium, same engine as Chrome
+- **Real PTY**: Proper Unix pseudo-terminal implementation
